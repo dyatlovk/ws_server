@@ -2,10 +2,11 @@
 
 namespace Websock
 {
-  Connection::Connection(const std::string &host, int port)
+  Connection::Connection(const std::string &host, int port, int socket)
       : port(port)
       , host(host)
       , id(0)
+      , socket(socket)
   {
     this->id = GenerateId();
   }

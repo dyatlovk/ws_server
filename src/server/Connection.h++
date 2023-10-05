@@ -7,7 +7,7 @@ namespace Websock
   class Connection
   {
   public:
-    Connection(const std::string &host, int port);
+    Connection(const std::string &host, int port, int socket);
 
     ~Connection();
 
@@ -23,7 +23,9 @@ namespace Websock
 
     // -------------------------------------------------------------------------
     // Check if connection have disconnect flag
-    auto isShouldDisconnected() -> bool { return isDisconnect; };
+    auto isShouldDisconnected() -> bool { return isDisconnect; }
+
+    auto GetSocket() -> int { return socket; }
 
   private:
     // -------------------------------------------------------------------------
@@ -35,5 +37,6 @@ namespace Websock
     std::string host;
     bool isDisconnect;
     int id;
+    int socket;
   };
 } // namespace Websock

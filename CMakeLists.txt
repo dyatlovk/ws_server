@@ -37,7 +37,13 @@ set(FMTLIB "${VENDORS}/fmt/linux/libfmt.a")
 
 # main app
 set(WS_INCLUDE "${PROJECT_SOURCE_DIR}/src")
-file(GLOB WS_SOURCES src/main.c++ src/server/Server.c++ src/server/Connection.c++ src/server/layers/tcp.c++)
+file(GLOB WS_SOURCES 
+    src/main.c++ 
+    src/layers/TcpAbstract.c++
+    src/io/epoll/epoll.c++
+    src/server/TcpServer.c++
+    src/server/Client.c++
+    )
 
 # Build type
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build debug")
