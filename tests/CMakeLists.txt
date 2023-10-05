@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-file(GLOB SOURCES main.c++ ${WS_INCLUDE}/layers/tcp.c++)
+file(GLOB SOURCES main.c++)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${FMT_INCLUDE} ${WS_INCLUDE})
