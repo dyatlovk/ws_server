@@ -19,7 +19,7 @@ namespace io
   {
     Close(fd);
     delete evlist;
-    fmt::println("[Epoll] resources free");
+    fmt::println("[Epoll] {} resources free", fd);
   }
 
   auto Epoll::Create() -> void

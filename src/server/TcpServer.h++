@@ -1,18 +1,22 @@
 #pragma once
 #include <csignal>
+#include <cstddef>
 #include <layers/TcpAbstract.h++>
+#include <memory>
+#include <unordered_map>
 
 #include "ServerAbstract.h++"
 #include "io/epoll/epoll.h++"
+#include "server/Client.h++"
 
 namespace Server
 {
-  class TcpServer : public Layers::TcpAbstract, public ServerAbstract
+  class TcpServer : public ServerAbstract
   {
-    typedef io::Epoll::Events IOEvents;
-
   private:
-    constexpr static const unsigned int MAX_EVENTS = 1000;
+    constexpr static const unsigned int MAX_CONNECTIONS = 1000;
+    typedef std::unique_ptr<Client> ClientT;
+    typedef std::unordered_map<int, ClientT> ClientsPool;
 
   public:
     TcpServer(const char *host, const int port);
@@ -21,35 +25,39 @@ namespace Server
 
     auto ShutDown() -> void override;
 
-  protected:
-    auto Open() -> bool override;
-
-    auto Bind() -> bool override;
-
-    auto Listen(const int max) -> bool override;
-
-    auto Accept() -> int override;
-
   private:
-    auto SetNonBlocking(const int sock) -> void;
-
-    auto AcceptNewConnection() -> int;
-
-    auto AcceptData(const int clientSocket = -1) -> void;
-
     auto WaitConnectionHandler() -> void;
 
     auto MainLoopHandler() -> void;
 
-    auto IncomingHandler(const int socket, const bool isMaster) -> void;
+  private:
+    /**
+     * Add new client to pool
+     **/
+    auto RegisterClient(const int socket) -> void;
 
-    auto CloseHandler(const int socket, const bool isMaster) -> void;
+    /**
+     * Remove client from pool
+     **/
+    auto DisconnectClient(const int id) -> void;
+
+    /**
+     * Find client in pool
+     **/
+    auto FindClient(const int id) -> ClientT;
+
+    auto SendData(ClientT &&client, const char *buf) -> void;
+
+    /**
+     * Create client as server
+     **/
+    auto CreateServer() -> void;
 
   private:
     int port;
     const char *host;
-    struct sockaddr_in serverAddr;
 
-    io::Epoll *io;
+    ClientsPool clients;
+    Client *server;
   };
 } // namespace Server

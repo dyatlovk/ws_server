@@ -1,9 +1,8 @@
 #include "TcpServer.h++"
 
 #include <atomic>
-#include <fcntl.h>
 #include <fmt/core.h>
-#include <stdexcept>
+#include <memory>
 #include <thread>
 
 namespace Server
@@ -13,8 +12,6 @@ namespace Server
   TcpServer::TcpServer(const char *host, const int port)
       : host(host)
       , port(port)
-      , serverAddr(addr)
-      , io(new io::Epoll(1000))
   {
   }
 
@@ -25,29 +22,9 @@ namespace Server
       throw std::runtime_error("[Server] host and port required");
     }
 
-    if (!Open())
-    {
-      throw std::runtime_error("[Server] Error open socket");
-    }
-
-    if (!Bind())
-    {
-      throw std::runtime_error("[Server] Error bind socket");
-    }
-
-    if (!Listen(MAX_CONN))
-    {
-      throw std::runtime_error("[Server] Error listen socket");
-    }
-
-    SetNonBlocking(fd);
-
-    // Create IO for server socket
-    io->Create();
-    io->SetMasterSocket(fd);
-    io->RegisterSocket(fd, IOEvents::INCOMING | IOEvents::WRITE | IOEvents::CLOSE);
-    io->OnIncoming([this](int sock, bool isMaster) { IncomingHandler(sock, isMaster); });
-    io->OnClose([this](int sock, bool isMaster) { CloseHandler(sock, isMaster); });
+    CreateServer();
+    server->OnNewConnection([this](int socket) { RegisterClient(socket); });
+    server->OnCloseConnection([this](int socket) { DisconnectClient(socket); });
 
     fmt::println("[Server] {host}:{port} ready ...", fmt::arg("host", host), fmt::arg("port", port));
 
@@ -62,115 +39,21 @@ namespace Server
   auto TcpServer::ShutDown() -> void
   {
     isRunning = 0;
-    delete io;
+    clients.clear();
+    delete server;
     fmt::println("[Server] shutdown");
   }
-
-  auto TcpServer::Open() -> bool
-  {
-    fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd == -1)
-    {
-      return false;
-    }
-
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = inet_addr(host);
-
-    fmt::println("[Server] Socket opened [OK]");
-
-    return true;
-  }
-
-  auto TcpServer::Bind() -> bool
-  {
-    const auto b = bind(fd, (const struct sockaddr *)&serverAddr, sizeof(serverAddr));
-    if (b == -1)
-    {
-      return false;
-    }
-
-    fmt::println("[Server] Socket binded [OK]");
-
-    return true;
-  }
-
-  auto TcpServer::Listen(const int max) -> bool
-  {
-    if (listen(fd, max) == -1)
-    {
-      return false;
-    }
-
-    fmt::println("[Server] Socket listen [OK]");
-
-    return true;
-  }
-
-  auto TcpServer::Accept() -> int
-  {
-    return -1;
-  }
-
 
   // ---------------------------------------------------------------------------
   // PRIVATE FUNCTIONS
   // ---------------------------------------------------------------------------
 
-  auto TcpServer::SetNonBlocking(const int sock) -> void
-  {
-    int old_flags = fcntl(sock, F_GETFL, 0);
-    fcntl(sock, F_SETFL, old_flags | O_NONBLOCK);
-  }
-
-  auto TcpServer::AcceptNewConnection() -> int
-  {
-    int socket = -1;
-    struct sockaddr_in peer;
-    socklen_t peer_len = sizeof(peer);
-
-    if ((socket = accept(fd, (struct sockaddr *)&peer, &peer_len)) == -1)
-    {
-      return -1;
-    }
-
-    SetNonBlocking(socket);
-
-    io->RegisterSocket(socket, IOEvents::INCOMING | IOEvents::WRITE | IOEvents::CLOSE);
-
-    getsockname(socket, (struct sockaddr *)&peer, &peer_len);
-
-    const auto ip = inet_ntoa(peer.sin_addr);
-    const auto p = (int)ntohs(peer.sin_port);
-
-    fmt::println("[Server] new client {sock}, {host}:{port}", fmt::arg("host", ip), fmt::arg("port", p),
-        fmt::arg("sock", socket));
-
-    return socket;
-  }
-
-  auto TcpServer::AcceptData(const int clientSocket) -> void
-  {
-    char buf[1024];
-    memset(buf, 0, sizeof(buf));
-    int byte_count = read(clientSocket, buf, 1024);
-    if (byte_count == 0)
-    {
-      // close(clientSocket);
-      // fmt::println("socket disconnected {}", clientSocket);
-      return;
-    }
-
-    fmt::println("[Server] client {socket} send data: {data}", fmt::arg("socket", clientSocket), fmt::arg("data", buf));
-  }
-
   auto TcpServer::WaitConnectionHandler() -> void
   {
     while (isRunning)
     {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      io->Wait();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      server->WatchConnections();
     }
   }
 
@@ -185,18 +68,60 @@ namespace Server
     }
   }
 
-  auto TcpServer::IncomingHandler(const int socket, const bool isMaster) -> void
+  auto TcpServer::CreateServer() -> void
   {
-    if (isMaster)
+    server = new Client();
+    server->SetHost(host);
+    server->SetPort(port);
+    if (!server->Open())
     {
-      AcceptNewConnection();
+      throw std::runtime_error("[Server] Error open socket");
     }
 
-    if (!isMaster)
+    if (!server->Bind())
     {
-      AcceptData(socket);
+      throw std::runtime_error("[Server] Error bind socket");
     }
+
+    if (!server->Listen(MAX_CONNECTIONS))
+    {
+      throw std::runtime_error("[Server] Error listen socket");
+    }
+
+    server->SetNonBlocking();
+    server->UseIO();
   }
 
-  auto TcpServer::CloseHandler(const int socket, const bool isMaster) -> void {}
+  auto TcpServer::RegisterClient(const int socket) -> void
+  {
+    auto client = std::make_unique<Client>(socket);
+    client->SetNonBlocking();
+    clients.emplace(socket, std::move(client));
+  }
+
+  auto TcpServer::DisconnectClient(const int id) -> void
+  {
+    auto client = FindClient(id);
+    if (!client)
+      return;
+
+    clients.erase(id);
+    client->CloseConnection();
+
+    fmt::println("[Server] disconnect client {}", id);
+  }
+
+  auto TcpServer::FindClient(const int id) -> ClientT
+  {
+    try
+    {
+      return std::move(clients.at(id));
+    }
+    catch (std::out_of_range &e)
+    {
+      return nullptr;
+    }
+
+    return nullptr;
+  }
 } // namespace Server
