@@ -7,7 +7,7 @@ namespace Server
   class Client : public Layers::TcpAbstract
   {
   public:
-    Client();
+    Client(int socket);
 
   protected:
     auto Open() -> bool override { return false; };
@@ -17,5 +17,8 @@ namespace Server
     auto Listen(const int max) -> bool override { return false; }
 
     auto Accept() -> int override;
+
+  private:
+
   };
 } // namespace Server

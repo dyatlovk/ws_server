@@ -1,14 +1,16 @@
 #pragma once
-#include <layers/TcpAbstract.h++>
 #include <csignal>
-#include <sys/epoll.h>
+#include <layers/TcpAbstract.h++>
 
 #include "ServerAbstract.h++"
+#include "io/epoll/epoll.h++"
 
 namespace Server
 {
   class TcpServer : public Layers::TcpAbstract, public ServerAbstract
   {
+    typedef io::Epoll::Events IOEvents;
+
   private:
     constexpr static const unsigned int MAX_EVENTS = 1000;
 
@@ -29,12 +31,6 @@ namespace Server
     auto Accept() -> int override;
 
   private:
-    auto CreateEpoll() -> bool;
-
-    auto CloseConnection() -> void override;
-
-    auto CloseAllClients() -> void;
-
     auto SetNonBlocking(const int sock) -> void;
 
     auto AcceptNewConnection() -> int;
@@ -45,14 +41,15 @@ namespace Server
 
     auto MainLoopHandler() -> void;
 
+    auto IncomingHandler(const int socket, const bool isMaster) -> void;
+
+    auto CloseHandler(const int socket, const bool isMaster) -> void;
+
   private:
     int port;
     const char *host;
-    int serverSocket;
     struct sockaddr_in serverAddr;
 
-    int epfd; // epoll instance
-    struct epoll_event *evlist, events[MAX_EVENTS];
-    int wait_events;
+    io::Epoll *io;
   };
 } // namespace Server
