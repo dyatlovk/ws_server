@@ -6,8 +6,6 @@
 #include <fmt/core.h>
 #include <unistd.h> // socket write
 
-#include "io/epoll/epoll.h++"
-
 namespace Server
 {
   Client::Client()
@@ -53,7 +51,7 @@ namespace Server
       {
         return -1;
       }
-      close(fd);
+      CloseConnection();
     }
     return -1;
   }

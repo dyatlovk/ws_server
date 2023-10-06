@@ -1,6 +1,7 @@
 #include "TcpServer.h++"
 
 #include <atomic>
+#include <csignal>
 #include <fmt/core.h>
 #include <thread>
 
