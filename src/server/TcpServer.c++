@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <fmt/core.h>
-#include <memory>
 #include <thread>
 
 namespace Server

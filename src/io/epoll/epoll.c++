@@ -93,7 +93,7 @@ namespace io
       throw std::runtime_error("[Epoll] error register socket");
     }
 
-    fmt::println("[Epoll] epoll register new socket: {} [OK]", socket);
+    fmt::println("[Epoll] register new socket: {} [OK]", socket);
   }
 
   auto Epoll::UnregisterSocket(const int socket) -> void
