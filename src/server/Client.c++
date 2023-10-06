@@ -1,20 +1,21 @@
 #include "Client.h++"
 
-#include <cstring> // strlen
 #include <errno.h> // errno
-#include <fcntl.h>
+#include <fcntl.h> // fd manipulating(NONBLOCK mode)
 #include <fmt/core.h>
-#include <unistd.h> // socket write
+#include <unistd.h> // socket r/w
 
 namespace Server
 {
   Client::Client()
       : io(nullptr)
+      , readBuf("")
   {
   }
 
   Client::Client(const int socket)
       : io(nullptr)
+      , readBuf("")
   {
     fd = socket;
   }
@@ -52,8 +53,25 @@ namespace Server
         return -1;
       }
       CloseConnection();
+      onCloseConnection(fd);
     }
     return -1;
+  }
+
+  auto Client::ReadData(const int bufSize) -> const std::string &
+  {
+    readBuf.clear();
+    char buf[bufSize];
+    memset(buf, 0, sizeof(buf));
+    int byte_count = 0;
+
+    // read from socket until EOF
+    while ((byte_count = read(fd, buf, bufSize) > 0))
+    {
+      readBuf.append(buf);
+    }
+
+    return readBuf;
   }
 
   auto Client::Accept() -> int
@@ -140,7 +158,7 @@ namespace Server
 
   auto Client::UseIO() -> void
   {
-    io = new io::Epoll(1000);
+    io = new io::Epoll();
     io->Create();
     io->SetMasterSocket(fd);
     io->RegisterSocket(fd, IOEvents::INCOMING | IOEvents::WRITE | IOEvents::CLOSE);
@@ -150,6 +168,10 @@ namespace Server
           if (isMaster)
           {
             Accept();
+          }
+          if (!isMaster)
+          {
+            onClientMessage(sock);
           }
         });
     io->OnClose([this](int sock, bool isMaster) { onCloseConnection(sock); });

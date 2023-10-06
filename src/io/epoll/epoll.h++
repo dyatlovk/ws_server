@@ -29,6 +29,9 @@ namespace io
 
     ~Epoll();
 
+    /**
+     * Create epoll instance
+     **/
     auto Create() -> void;
 
     /**
@@ -59,18 +62,18 @@ namespace io
     auto GetDescriptor() -> int { return fd; };
 
     /**
-     * New connection or read event on socket
+     * New connection or read event on a socket
      *
      * @param $1 int socket
-     * @param $2 bool isMaster
+     * @param $2 bool What this connection? True: is a master(server). False: is a slave (connected client)
      **/
     auto OnIncoming(std::function<void(int, bool)> &&callback) -> void { onIncoming = callback; };
 
     /**
-     * Write event on socket
+     * Write event on a socket
      *
      * @param $1 int socket
-     * @param $2 bool isMaster
+     * @param $2 bool isMaster (@see OnIncoming params)
      **/
     auto OnWrite(std::function<void(int, bool)> &&callback) -> void { onWrite = callback; }
 
@@ -78,7 +81,7 @@ namespace io
      * Socket closed
      *
      * @param $1 int socket
-     * @param $2 bool isMaster
+     * @param $2 bool isMaster (@see OnIncoming params)
      **/
     auto OnClose(std::function<void(int, bool)> &&callback) -> void { onClose = callback; };
 
@@ -88,7 +91,7 @@ namespace io
     auto SetMasterSocket(const int fd) -> void { masterSocket = fd; };
 
     /**
-     * Specifies time is ms that epoll_wait() will blocked
+     * Specifies time in ms that epoll_wait() will blocked
      */
     auto SetTimeOut(const int ms) -> void { timeout = ms; };
 

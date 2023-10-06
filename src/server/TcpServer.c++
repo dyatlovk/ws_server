@@ -7,6 +7,7 @@
 
 namespace Server
 {
+  // Server is running until this flag is 1
   static std::atomic_uint isRunning = 0;
 
   TcpServer::TcpServer(const char *host, const int port)
@@ -23,8 +24,9 @@ namespace Server
     }
 
     CreateServer();
-    server->OnNewConnection([this](int socket) { RegisterClient(socket); });
-    server->OnCloseConnection([this](int socket) { DisconnectClient(socket); });
+    server->OnNewConnection([this](int socket) -> void { RegisterClient(socket); });
+    server->OnCloseConnection([this](int socket) -> void { DisconnectClient(socket); });
+    server->OnClientMessage([this](int socket) -> void { ReadClientMessage(socket); });
 
     fmt::println("[Server] {host}:{port} ready ...", fmt::arg("host", host), fmt::arg("port", port));
 
@@ -94,7 +96,7 @@ namespace Server
 
   auto TcpServer::RegisterClient(const int socket) -> void
   {
-    auto client = std::make_unique<Client>(socket);
+    auto client = std::make_shared<Client>(socket);
     client->SetNonBlocking();
     clients.emplace(socket, std::move(client));
   }
@@ -111,11 +113,23 @@ namespace Server
     fmt::println("[Server] disconnect client {}", id);
   }
 
+  auto TcpServer::ReadClientMessage(const int id) -> void
+  {
+    auto client = FindClient(id);
+    if (!client)
+      return;
+
+    auto msg = client->ReadData();
+    fmt::println("msg: {}", msg);
+  }
+
   auto TcpServer::FindClient(const int id) -> ClientT
   {
+    if (clients.size() == 0)
+      return nullptr;
     try
     {
-      return std::move(clients.at(id));
+      return clients.at(id);
     }
     catch (std::out_of_range &e)
     {

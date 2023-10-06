@@ -44,12 +44,12 @@ namespace Layers
     constexpr static const unsigned int MAX_CONN = 1000;
 
     /**
-     * Create socket
+     * Create a socket
      **/
     virtual auto Open() -> bool = 0;
 
     /**
-     * Bind a name to an opened socket
+     * Bind a socket to an local address
      **/
     virtual auto Bind() -> bool = 0;
 
