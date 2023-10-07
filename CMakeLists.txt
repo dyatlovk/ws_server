@@ -39,12 +39,12 @@ set(FMTLIB "${VENDORS}/fmt/linux/libfmt.a")
 set(WS_INCLUDE "${PROJECT_SOURCE_DIR}/src")
 file(GLOB WS_SOURCES 
     src/main.c++ 
-    src/layers/TcpAbstract.c++
-    src/io/epoll/epoll.c++
-    src/io/sockets/inet_socket.c++
-    src/io/sockets/local_socket.c++
-    src/server/TcpServer.c++
-    src/server/Client.c++
+    # src/layers/TcpAbstract.c++
+    # src/io/epoll/epoll.c++
+    # src/io/sockets/inet_socket.c++
+    # src/io/sockets/local_socket.c++
+    # src/server/TcpServer.c++
+    # src/server/Client.c++
     )
 
 # Build type

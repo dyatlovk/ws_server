@@ -1,20 +1,22 @@
 #pragma once
+
 #include <functional>
+#include <string>
 #include <sys/epoll.h>
 
 namespace io
 {
   /**
-   * IO monitoring mechanism. Linux only.
-   * @see man epoll
-   **/
-  class Epoll
+   * @brief      IO monitoring mechanism. Linux only.
+   * @see        man epoll
+   */
+  class epoll
   {
   public:
     /**
-     * Epoll events
-     * @see man epoll_ctl
-     **/
+     * @brief      Supported events
+     * @see        man epoll_ctl
+     */
     enum Events
     {
       INCOMING = EPOLLIN,
@@ -25,89 +27,150 @@ namespace io
     };
 
   public:
-    explicit Epoll(const int max = MAX_EVENTS_DEFAULT);
+    explicit epoll(const int max = MAX_EVENTS_DEFAULT);
 
-    ~Epoll();
-
-    /**
-     * Create epoll instance
-     **/
-    auto Create() -> void;
+    ~epoll();
 
     /**
-     * Wait IO on epoll descriptor instance
-     * @see man epoll_wait
-     **/
-    auto Wait() -> void;
-
-    /**
-     * Close socket descriptor
-     **/
-    auto Close(const int sock) -> void;
-
-    /**
-     * Add socket to monitoring by epoll
-     * @param e epoll events(man epoll_ctl)
-     **/
-    auto RegisterSocket(const int socket, const uint32_t e = Events::INCOMING) -> void;
-
-    /**
-     * Remove socket from epoll monitoring
-     **/
-    auto UnregisterSocket(const int socket) -> void;
-
-    /**
-     * Get epoll fd
+     * @brief      Create epoll instance
+     *
+     * @return     void
      */
-    auto GetDescriptor() -> int { return fd; };
+    auto create() -> void;
 
     /**
-     * New connection or read event on a socket
+     * @brief      Wait IO on epoll descriptor instance
+     * @see        man epoll_wait
      *
-     * @param $1 int socket
-     * @param $2 bool What this connection? True: is a master(server). False: is a slave (connected client)
-     **/
-    auto OnIncoming(std::function<void(int, bool)> &&callback) -> void { onIncoming = callback; };
-
-    /**
-     * Write event on a socket
-     *
-     * @param $1 int socket
-     * @param $2 bool isMaster (@see OnIncoming params)
-     **/
-    auto OnWrite(std::function<void(int, bool)> &&callback) -> void { onWrite = callback; }
-
-    /**
-     * Socket closed
-     *
-     * @param $1 int socket
-     * @param $2 bool isMaster (@see OnIncoming params)
-     **/
-    auto OnClose(std::function<void(int, bool)> &&callback) -> void { onClose = callback; };
-
-    /**
-     * Set master socket
-     **/
-    auto SetMasterSocket(const int fd) -> void { masterSocket = fd; };
-
-    /**
-     * Specifies time in ms that epoll_wait() will blocked
+     * @return     void
      */
-    auto SetTimeOut(const int ms) -> void { timeout = ms; };
+    auto wait() -> void;
+
+    /**
+     * @brief      Close epoll socket descriptor (connected sockets are keeping)
+     *
+     * @return     void
+     */
+    auto close() -> void;
+
+    /**
+     * @brief      Add socket to monitoring by epoll
+     *
+     * @param[in]  socket  The socket
+     * @param      e       epoll events(man epoll_ctl)
+     *
+     * @return     void
+     */
+    auto register_socket(const int socket, const uint32_t e = EPOLLIN) -> void;
+
+    /**
+     * @brief      Remove socket from epoll monitoring. Socket does not closing
+     *
+     * @param[in]  socket  The socket
+     *
+     * @return     void
+     */
+    auto unregister_socket(const int socket) -> void;
+
+    /**
+     * @brief      Get epoll fd
+     *
+     * @return     Epoll fd descriptor.
+     */
+    auto get_fd() -> int { return fd; };
+
+    /**
+     * @brief      Any incoming connection (client or server)
+     *
+     * @param      callback  The callback
+     * @param      int   socket
+     * @param      bool  What a type of this connection? True: is a master(server).
+     *                   False: is a slave (connected client)
+     *
+     * @return     void
+     */
+    auto on_incoming(std::function<void(int, bool)> &&callback) -> void { on_incoming_ = callback; };
+
+    /**
+     * @brief      A new client connection event
+     *
+     * @param      callback  The callback
+     *
+     * @return     void
+     */
+    auto on_connection(std::function<void(int)> &&callback) -> void { on_connection_ = callback; };
+
+    /**
+     * @brief      Write event on a socket (client sending data)
+     *
+     * @param      callback  The callback
+     * @param      int   socket
+     *
+     * @return     void
+     */
+    auto on_write(std::function<void(int, const char *)> &&callback) -> void { on_write_ = callback; }
+
+    /**
+     * @brief      Socket closed (client is closed connection)
+     *
+     * @param      callback  The callback
+     * @param      int   socket
+     *
+     * @return     void
+     */
+    auto on_close(std::function<void(int)> &&callback) -> void { on_close_ = callback; };
+
+    /**
+     * @brief      Set master socket (This socket is server)
+     *
+     * @param[in]  fd    socket fd
+     *
+     * @return     void
+     */
+    auto set_master_socket(const int fd) -> void { masterSocket = fd; };
+
+    /**
+     * @brief      Specifies time in ms that epoll_wait() will be blocked
+     *
+     * @param[in]  ms    timeout in ms
+     *
+     * @return     void
+     */
+    auto set_timeout(const int ms) -> void { timeout = ms; };
 
   private:
-    constexpr static const unsigned int MAX_EVENTS_DEFAULT = 1000;
-    constexpr static const int WAIT_TIMEOUT_DEFAULT = -1;
+    /**
+     * @brief      Accept a new peer
+     *
+     * @return     Socket fd
+     */
+    auto peer_accept() -> int;
+
+    /**
+     * @brief      Peer sending data, reading it
+     *
+     * @param[in]  peer     Socket fd
+     * @param[in]  bufSize  Size of chunks
+     *
+     * @return     readed data
+     */
+    auto peer_read(const int peer, const int bufSize = 1024) -> const char *;
+
+  private:
+    constexpr static const unsigned int MAX_EVENTS_DEFAULT = 0x3e8; // 1000
+    constexpr static const int WAIT_TIMEOUT_DEFAULT = 0xffffffff; // -1
 
     int fd; // epoll file descriptor
-    struct epoll_event *evlist, events[MAX_EVENTS_DEFAULT];
+    struct epoll_event evlist, events[MAX_EVENTS_DEFAULT];
     int wait_events;
     int maxEvents;
     int timeout;
     int masterSocket;
+    std::string readBuf; // send data buffer
 
-    std::function<void(int, bool)> onIncoming;
-    std::function<void(int, bool)> onWrite;
-    std::function<void(int, bool)> onClose;
+    std::function<void(int, bool)> on_incoming_;
+    std::function<void(int)> on_connection_;
+    std::function<void(int, const char *)> on_write_;
+    std::function<void(int)> on_close_;
   };
 } // namespace io

@@ -10,7 +10,7 @@ namespace Server
   class Client : public Layers::TcpAbstract
   {
   private:
-    typedef io::Epoll::Events IOEvents;
+    typedef io::epoll::Events IOEvents;
 
   public:
     Client();
@@ -91,7 +91,7 @@ namespace Server
     auto OnClientMessage(std::function<void(int)> &&callback) -> void { onClientMessage = callback; };
 
   private:
-    io::Epoll *io;
+    io::epoll *io;
 
     std::function<void(int)> onNewConnection;
     std::function<void(int)> onCloseConnection;

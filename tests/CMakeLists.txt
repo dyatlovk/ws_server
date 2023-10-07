@@ -13,9 +13,9 @@ endif()
 
 file(GLOB SOURCES 
 	main.c++ 
-	${WS_INCLUDE}/io/sockets.c++
 	${WS_INCLUDE}/io/sockets/inet_socket.c++
 	${WS_INCLUDE}/io/sockets/local_socket.c++
+	${WS_INCLUDE}/io/epoll/epoll.c++
 	)
 
 add_executable(${PROJECT_NAME} ${SOURCES})

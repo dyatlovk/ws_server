@@ -174,7 +174,7 @@ namespace Server
             onClientMessage(sock);
           }
         });
-    io->OnClose([this](int sock, bool isMaster) { onCloseConnection(sock); });
+    io->OnClose([this](int sock) { onCloseConnection(sock); });
     io->OnWrite([this](int sock, bool isMaster) {});
   }
 } // namespace Server
