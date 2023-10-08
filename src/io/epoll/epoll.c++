@@ -11,7 +11,6 @@ namespace io
       : evlist()
       , maxEvents(max)
       , masterSocket(-1)
-      , wait_events(0)
       , timeout(WAIT_TIMEOUT_DEFAULT)
       , fd(-1)
   {
@@ -20,107 +19,122 @@ namespace io
 
   epoll::~epoll()
   {
-    ::close(evlist.data.fd);
-    close();
-    fmt::println("[Epoll] [{fd}] resources free", fmt::arg("fd", fd));
+    shutdown();
+    fmt::println("[Epoll] [{fd}] destructed [OK]", fmt::arg("fd", fd));
   }
 
   auto epoll::create() -> void
   {
     fd = epoll_create(maxEvents);
-    if (fd == -1)
-    {
-      throw std::runtime_error("[Epoll] create error");
-    }
-
+    if (fd == -1) throw std::runtime_error("[Epoll] create error");
     fmt::println("[Epoll] [{fd}] create [OK]", fmt::arg("fd", fd));
   }
 
   auto epoll::wait() -> void
   {
-    if (masterSocket == -1)
-    {
-      throw std::runtime_error("[Epoll] master socket not defined.");
-    }
+    if (masterSocket == -1) throw std::runtime_error("[Epoll] master socket not defined.");
+    int num = epoll_wait(fd, events_, maxEvents, timeout);
+    if (num == -1) throw std::runtime_error("[Server] epoll wait error");
 
-    wait_events = epoll_wait(fd, events, maxEvents, timeout);
-
-    if (wait_events == -1)
+    for (int i = 0; i < num; ++i)
     {
-      throw std::runtime_error("[Server] epoll wait error");
-    }
-
-    for (int i = 0; i < wait_events; ++i)
-    {
-      const auto event = events[i];
+      const auto event = events_[i];
       const int sock = event.data.fd;
+      int events = events_[i].events;
 
-      if (event.events & EPOLLIN)
+      if (sock == masterSocket)
       {
-        if (on_incoming_)
-          on_incoming_(sock, sock == masterSocket);
-
-        if (sock == masterSocket)
+        if (events & EPOLLIN)
         {
-          const auto peer = peer_accept();
-          if (peer == -1)
+          if (peer_accept() == -1)
+          {
             continue;
-          register_socket(peer, EPOLLIN | EPOLLOUT | EPOLLRDHUP);
-          if (on_connection_)
-            on_connection_(peer);
+          }
         }
       }
 
-      if (event.events & EPOLLOUT)
+      if (sock != masterSocket)
       {
-        if (sock != masterSocket)
+        if (events & EPOLLET | EPOLLOUT)
         {
-          const auto data = peer_read(sock);
-          if (on_write_)
-            on_write_(sock, data);
+          peer_read(sock);
+        }
+
+        if (events & EPOLLRDHUP)
+        {
+          try
+          {
+            unwatch(sock);
+          }
+          catch (std::runtime_error &e)
+          {
+            throw std::runtime_error(e);
+          }
+          if (on_close_) on_close_(sock);
         }
       }
-
-      if (event.events & EPOLLRDHUP)
-      {
-        if (sock != masterSocket)
-        {
-          unregister_socket(sock);
-          if (on_close_)
-            on_close_(sock);
-        }
-      }
     }
   }
 
-  auto epoll::close() -> void
+  auto epoll::shutdown() -> void
   {
-    ::close(fd);
-    fmt::println("[Epoll] [{fd}] close fd", fmt::arg("fd", fd));
-  }
-
-  auto epoll::register_socket(const int socket, const uint32_t e) -> void
-  {
-    evlist.events = e;
-    evlist.data.fd = socket;
-
-    if (epoll_ctl(fd, EPOLL_CTL_ADD, socket, &evlist) == -1)
+    try
     {
-      fmt::println("[Epoll] socket error {}", socket);
-      throw std::runtime_error("[Epoll] error register socket");
+      unwatch_all();
     }
-
-    fmt::println("[Epoll] register new socket: {} [OK]", socket);
+    catch (std::runtime_error &e)
+    {
+      fmt::println("[Epoll] shutdown error {}", e.what());
+    }
+    close(fd);
+    fmt::println("[Epoll] shutdown [OK]", fmt::arg("fd", fd));
   }
 
-  auto epoll::unregister_socket(const int socket) -> void
+  auto epoll::watch(const int socket, const uint32_t e) -> void
   {
-    if (epoll_ctl(fd, EPOLL_CTL_DEL, socket, &evlist) == -1)
-    {
-      throw std::runtime_error("[Epoll] unregister socket");
-    }
+    if (masterSocket == socket) return;
+
+    if (add(socket, e) == -1) std::runtime_error("[Epoll] add error");
+
+    watched_.insert(socket);
+    fmt::println("[Epoll] register client socket: {} [OK]", socket);
+  }
+
+  auto epoll::register_master(const int socket, const uint32_t e) -> void
+  {
+    if (masterSocket > 0) return;
+    masterSocket = socket;
+    if (add(socket, e) == -1) throw std::runtime_error("[Epoll] error register master socket");
+    fmt::println("[Epoll] register master socket: {} [OK]", socket);
+  }
+
+  auto epoll::unwatch(const int socket) -> void
+  {
+    if (socket == masterSocket) return;
+    if (remove(socket) == -1) throw std::runtime_error("[Epoll] unregister socket");
+
+    watched_.erase(socket);
+    close(socket);
 
     fmt::println("[Epoll] [{fd}] unregister socket [OK]", fmt::arg("fd", socket));
+  }
+
+  auto epoll::unwatch_all() -> void
+  {
+    for (const auto &client : watched_)
+    {
+      try
+      {
+        unwatch(client);
+      }
+      catch (std::runtime_error &e)
+      {
+        fmt::println("runtime error unwatch_all");
+        throw std::runtime_error(e);
+      }
+    }
+
+    fmt::println("[Epoll] [{fd}] ({cl}) clients unwatching", fmt::arg("fd", fd), fmt::arg("cl", watched_size()));
   }
 
   auto epoll::peer_accept() -> int
@@ -129,6 +143,9 @@ namespace io
     socklen_t peer_len = sizeof(addr_);
     int peer = accept(masterSocket, (struct sockaddr *)&addr_, &peer_len);
     fcntl(peer, F_SETFL, fcntl(peer, F_GETFL, 0) | O_NONBLOCK);
+
+    watch(peer);
+    if (on_connection_) on_connection_(peer);
 
     return peer;
   }
@@ -144,6 +161,20 @@ namespace io
       readBuf.append(buf);
     }
 
+    if (on_write_) on_write_(peer, readBuf.c_str());
+
     return readBuf.c_str();
+  }
+
+  auto epoll::add(const int socket, const uint32_t e) -> int
+  {
+    evlist.events = e;
+    evlist.data.fd = socket;
+    return epoll_ctl(fd, EPOLL_CTL_ADD, socket, &evlist);
+  }
+
+  auto epoll::remove(const int socket) -> int
+  {
+    return epoll_ctl(fd, EPOLL_CTL_DEL, socket, &evlist);
   }
 } // namespace io

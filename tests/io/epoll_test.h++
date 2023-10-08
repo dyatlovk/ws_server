@@ -46,21 +46,24 @@ namespace tests::epoll
     auto e = new io::epoll();
     e->create();
     ASSERT_TRUE(e->get_fd() > 0, "epoll init ok");
+    e->shutdown();
 
     delete e;
   });
 
   TEST_CASE(reg_unreg_sock, {
     auto s = create_socket();
+    auto client = create_socket();
 
     auto e = new io::epoll();
     e->create();
-    e->register_socket(s);
+    e->register_master(s);
+    e->watch(client);
 
-    ASSERT_TRUE(true, "reister socket ok");
+    ASSERT_EQ_INT(1, e->watched_size(), "register socket ok");
 
-    e->unregister_socket(s);
-    ASSERT_TRUE(true, "unregister socket ok");
+    e->unwatch(client);
+    ASSERT_EQ_INT(0, e->watched_size(), "unregister socket ok");
 
     delete e;
   });
@@ -72,8 +75,7 @@ namespace tests::epoll
 
     auto io = new io::epoll();
     io->create();
-    io->set_master_socket(server);
-    io->register_socket(server, EPOLLIN | EPOLLOUT | EPOLLRDHUP);
+    io->register_master(server, EPOLLIN);
 
     io->on_connection(
         [&io](int sock)
@@ -87,7 +89,6 @@ namespace tests::epoll
         {
           sended = data;
           is_run = 0;
-          return data;
         });
 
     send_packet("hello");
@@ -104,8 +105,8 @@ namespace tests::epoll
 
   auto run() -> void
   {
+    watch();
     epoll_init();
     reg_unreg_sock();
-    watch();
   }
 } // namespace tests::epoll

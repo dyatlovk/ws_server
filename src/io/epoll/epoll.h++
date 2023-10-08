@@ -3,6 +3,7 @@
 #include <functional>
 #include <string>
 #include <sys/epoll.h>
+#include <unordered_set>
 
 namespace io
 {
@@ -35,6 +36,7 @@ namespace io
      * @brief      Create epoll instance
      *
      * @return     void
+     * @throws     std::runtime_error  Error create
      */
     auto create() -> void;
 
@@ -43,34 +45,60 @@ namespace io
      * @see        man epoll_wait
      *
      * @return     void
+     * @throws     std::runtime_error  Wait error or master socket not defined
      */
     auto wait() -> void;
 
     /**
-     * @brief      Close epoll socket descriptor (connected sockets are keeping)
+     * @brief      Close epoll and connected sockets
      *
      * @return     void
      */
-    auto close() -> void;
+    auto shutdown() -> void;
 
     /**
-     * @brief      Add socket to monitoring by epoll
+     * @brief      Add socket to monitoring by epoll. Master socket is protected
      *
      * @param[in]  socket  The socket
      * @param      e       epoll events(man epoll_ctl)
      *
      * @return     void
      */
-    auto register_socket(const int socket, const uint32_t e = EPOLLIN) -> void;
+    auto watch(const int socket, const uint32_t e = EPOLLIN | EPOLLET | EPOLLRDHUP) -> void;
 
     /**
-     * @brief      Remove socket from epoll monitoring. Socket does not closing
+     * @brief      Master socket watching clients connections. One socket per instance
+     *
+     * @param[in]  socket  The socket
+     * @param[in]  e       epoll events(man epoll_ctl)
+     *
+     * @return     void
+     */
+    auto register_master(const int socket, const uint32_t e = EPOLLIN) -> void;
+
+    /**
+     * @brief      Remove socket from epoll monitoring and closing it. Master
+     *             socket is protected
      *
      * @param[in]  socket  The socket
      *
      * @return     void
      */
-    auto unregister_socket(const int socket) -> void;
+    auto unwatch(const int socket) -> void;
+
+    /**
+     * @brief      Like an unwatch method, but for all clients
+     *
+     * @return     void
+     */
+    auto unwatch_all() -> void;
+
+    /**
+     * @brief      Get size watched clients
+     *
+     * @return     int count
+     */
+    auto watched_size() -> int { return watched_.size(); };
 
     /**
      * @brief      Get epoll fd
@@ -121,15 +149,6 @@ namespace io
     auto on_close(std::function<void(int)> &&callback) -> void { on_close_ = callback; };
 
     /**
-     * @brief      Set master socket (This socket is server)
-     *
-     * @param[in]  fd    socket fd
-     *
-     * @return     void
-     */
-    auto set_master_socket(const int fd) -> void { masterSocket = fd; };
-
-    /**
      * @brief      Specifies time in ms that epoll_wait() will be blocked
      *
      * @param[in]  ms    timeout in ms
@@ -156,13 +175,16 @@ namespace io
      */
     auto peer_read(const int peer, const int bufSize = 1024) -> const char *;
 
+    auto add(const int socket, const uint32_t e) -> int;
+
+    auto remove(const int socket) -> int;
+
   private:
     constexpr static const unsigned int MAX_EVENTS_DEFAULT = 0x3e8; // 1000
     constexpr static const int WAIT_TIMEOUT_DEFAULT = 0xffffffff; // -1
 
     int fd; // epoll file descriptor
-    struct epoll_event evlist, events[MAX_EVENTS_DEFAULT];
-    int wait_events;
+    struct epoll_event evlist, events_[MAX_EVENTS_DEFAULT];
     int maxEvents;
     int timeout;
     int masterSocket;
@@ -172,5 +194,7 @@ namespace io
     std::function<void(int)> on_connection_;
     std::function<void(int, const char *)> on_write_;
     std::function<void(int)> on_close_;
+
+    std::unordered_set<int> watched_;
   };
 } // namespace io

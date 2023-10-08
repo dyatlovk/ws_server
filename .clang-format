@@ -4,9 +4,9 @@ AlignAfterOpenBracket: DontAlign
 AlignEscapedNewlines: Left
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: Never
-AllowShortCaseLabelsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
 AlignOperands: false
@@ -39,7 +39,7 @@ MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
 PointerAlignment: Right
 SpaceBeforeParens: ControlStatements
-Standard: c++17
+Standard: c++20
 TabWidth: 2
 UseTab: Never
 ...
