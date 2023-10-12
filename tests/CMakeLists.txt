@@ -16,6 +16,7 @@ file(GLOB SOURCES
 	${WS_INCLUDE}/io/sockets/inet_socket.c++
 	${WS_INCLUDE}/io/sockets/local_socket.c++
 	${WS_INCLUDE}/io/epoll/epoll.c++
+	${WS_INCLUDE}/http/parser.c++
 	)
 
 add_executable(${PROJECT_NAME} ${SOURCES})

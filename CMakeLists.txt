@@ -43,6 +43,7 @@ file(GLOB WS_SOURCES
     src/io/epoll/epoll.c++
     src/io/sockets/inet_socket.c++
     src/io/sockets/local_socket.c++
+    src/http/parser.c++
     )
 
 # Build type
