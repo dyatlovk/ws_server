@@ -78,10 +78,18 @@ namespace tests::http
     const auto parser = new ::http::parser(crlf);
     auto result = parser->get_headers();
     ASSERT_EQ_INT(result.size(), 4, "headers container size");
-    ASSERT_EQ_CHAR("Host: localhost", result.at(0).c_str(), "header ok");
-    ASSERT_EQ_CHAR("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0", result.at(1).c_str(), "header ok");
-    ASSERT_EQ_CHAR("test: value", result.at(2).c_str(), "header ok");
-    ASSERT_EQ_CHAR("x-key: test", result.at(3).c_str(), "header ok");
+    ASSERT_EQ_CHAR("Host", result.find("Host")->first.c_str(), "host key ok");
+    ASSERT_EQ_CHAR("localhost", result.find("Host")->second.c_str(), "host val ok");
+
+    ASSERT_EQ_CHAR("User-Agent", result.find("User-Agent")->first.c_str(), "ua key ok");
+    ASSERT_EQ_CHAR("Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0", result.find("User-Agent")->second.c_str(), "ua valu ok");
+
+    ASSERT_EQ_CHAR("test", result.find("test")->first.c_str(), "test key ok");
+    ASSERT_EQ_CHAR("value", result.find("test")->second.c_str(), "test val ok");
+
+    ASSERT_EQ_CHAR("x-key", result.find("x-key")->first.c_str(), "x-key key ok");
+    ASSERT_EQ_CHAR("test", result.find("x-key")->second.c_str(), "x-key val ok");
+
     delete parser;
   });
 

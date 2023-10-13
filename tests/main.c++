@@ -4,6 +4,7 @@
 #include "io/epoll_test.h++"
 #include "io/inet_soc_test.h++"
 #include "io/local_soc_test.h++"
+#include "stl/string/ws_string_test.h++"
 
 int main()
 {
@@ -11,5 +12,6 @@ int main()
   tests::socket_local::run();
   tests::epoll::run();
   tests::http::run();
+  tests::stl::run();
   return 0;
 }

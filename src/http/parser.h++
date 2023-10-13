@@ -1,6 +1,7 @@
 #pragma once
+
+#include <map>
 #include <string>
-#include <vector>
 
 namespace http
 {
@@ -9,6 +10,7 @@ namespace http
   public:
     // resize input buffer to this limit
     constexpr static int BUFFER_LIMIT = 1024 * 1000;
+    typedef std::map<std::string, std::string> head_container;
 
     parser(const char *str);
 
@@ -22,7 +24,7 @@ namespace http
 
     auto get_req_line() -> const std::string &;
 
-    auto get_headers() -> std::vector<std::string>;
+    auto get_headers() -> head_container;
 
     auto is_buffer_valid() -> bool { return is_buf_valid; }
 
@@ -50,13 +52,12 @@ namespace http
     // input buffer
     std::string input_;
 
-    // raw header
     // Key: value
     std::string header_;
     int head_end_pos_; // last char include
 
-    // raw headers line
-    std::vector<std::string> headers_raw_;
+    // key, value
+    head_container headers_;
 
     // request line
     // GET /uri HTTP/2

@@ -1,8 +1,6 @@
 #include "parser.h++"
 
-#include <cstdio>
-
-#include "fmt/core.h"
+#include <stl/string/ws_string.h++>
 
 namespace http
 {
@@ -40,9 +38,9 @@ namespace http
     tokenize_headers();
   }
 
-  auto parser::get_headers() -> std::vector<std::string>
+  auto parser::get_headers() -> head_container
   {
-    return headers_raw_;
+    return headers_;
   }
 
   auto parser::get_req_line() -> const std::string &
@@ -96,15 +94,16 @@ namespace http
         }
         if (b[i] == '\r' && b[i + 1] == '\n') // found eol
         {
-          headers_raw_.push_back(line);
+          auto kv = ws_stl::split_string(line, ':');
+          if (kv.size() == 0) req_line_ = line;
+          if (kv.size() > 0)
+          {
+            headers_.insert({kv.begin()->first, kv.begin()->second});
+          }
           line.clear(); // empty line for next iterator
         }
       }
     }
-
-    // get request line and remove from headers container
-    if (headers_raw_.size() > 0) req_line_ = headers_raw_.front();
-    headers_raw_.erase(headers_raw_.begin() + 0);
   }
 
   auto parser::clear_buffer() -> void
