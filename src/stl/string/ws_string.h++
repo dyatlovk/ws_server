@@ -6,6 +6,7 @@
 
 namespace ws_stl
 {
+  // {key, value}
   typedef std::unordered_map<std::string, std::string> split_pairs;
 
   inline auto trim_string(const std::string &str) -> std::string const

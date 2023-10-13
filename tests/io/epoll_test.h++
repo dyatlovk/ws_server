@@ -8,6 +8,7 @@
 
 #include "fmt/core.h"
 
+#undef TEST_EXIT_ONFAIL
 #define TEST_EXIT_ONFAIL 1
 #include "../testSuite.h"
 
