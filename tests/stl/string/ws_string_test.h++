@@ -28,9 +28,22 @@ namespace tests::stl
     ASSERT_EQ_CHAR("value", result.begin()->second.c_str(), "value3 ok");
   })
 
+  TEST_CASE(uppercase, {
+    auto upper = ws_stl::to_upper("lowercase");
+    ASSERT_EQ_CHAR("LOWERCASE", upper.c_str(), "uppercase");
+    auto u2 = ws_stl::to_lower("LoWerCASE");
+    ASSERT_EQ_CHAR("LOWERCASE", u2.c_str(), "lowercase");
+
+    auto lower = ws_stl::to_lower("UPPERCASE");
+    ASSERT_EQ_CHAR("uppercase", lower.c_str(), "lowercase");
+    auto l2 = ws_stl::to_lower("UpperCASE");
+    ASSERT_EQ_CHAR("uppercase", l2.c_str(), "lowercase");
+  })
+
   auto run() -> void
   {
     split();
     trim();
+    uppercase();
   }
 } // namespace tests::stl

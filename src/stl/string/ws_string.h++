@@ -37,4 +37,21 @@ namespace ws_stl
 
     return m;
   }
+
+  inline auto to_upper(const std::string &str) -> const std::string
+  {
+    char *chr = const_cast<char *>(str.c_str());
+    while (*chr)
+      *(chr++) = toupper((unsigned char)*chr);
+
+    return str;
+  }
+  inline auto to_lower(const std::string &str) -> const std::string
+  {
+    char *chr = const_cast<char *>(str.c_str());
+    while (*chr)
+      *(chr++) = tolower((unsigned char)*chr);
+
+    return str;
+  }
 } // namespace ws_stl
