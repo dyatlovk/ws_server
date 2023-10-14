@@ -9,18 +9,16 @@
 namespace tests::http::request
 {
   TEST_CASE(parse, {
-    const auto request = new ::http::request("GET / HTTP/2");
-    auto result = request->parse();
+    const auto request = new ::http::request();
+    auto result = request->parse("GET / HTTP/2");
     ASSERT_EQ_CHAR("/", result->uri.c_str(), "uri");
     ASSERT_EQ_FLOAT(2, result->http_ver, "version");
     ASSERT_TRUE(result->method == ::http::request::methods::Get, "method");
     delete request;
 
-    const auto bad_parse = new ::http::request("3434 /");
-    auto bad_result = bad_parse->parse();
-    ASSERT_EQ_CHAR("", bad_result->uri.c_str(), "bad uri");
-    ASSERT_EQ_FLOAT(0, bad_result->http_ver, "bad version");
-    ASSERT_TRUE(result->method == ::http::request::methods::Get, "bad method");
+    const auto bad_parse = new ::http::request();
+    auto bad_result = bad_parse->parse("3434 /");
+    ASSERT_TRUE(bad_result == nullptr, "bad request");
     delete bad_parse;
   });
 

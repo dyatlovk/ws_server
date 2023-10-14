@@ -4,6 +4,8 @@
 #include <csignal>
 #include <fmt/core.h>
 #include <thread>
+#include "http/parser.h++"
+#include "http/request.h++"
 
 namespace examples
 {
@@ -36,7 +38,19 @@ namespace examples
       return;
     }
     epoll_->on_connection([](int sock) { fmt::println("new connection {}", sock); });
-    epoll_->on_write([this](int sock, const char *data) { fmt::println("client sending data"); });
+    epoll_->on_write([this](int sock, const char *data) {
+      auto parser = new http::parser(data);
+      auto req_line = parser->get_req_line();
+      delete parser;
+
+      auto req = new http::request();
+      auto request = req->parse(req_line);
+      if(request)
+      {
+        fmt::println("method: {} uri: {}", http::request::method_string(request->method), request->uri);
+      }
+      delete req;
+    });
     epoll_->on_close([](int socket) { fmt::println("client closed {}", socket); });
 
     server_run = true;

@@ -30,23 +30,23 @@ namespace http
       float http_ver;
     } http_req_;
 
-    request(const std::string &input)
-        : input_(input)
+    request()
+        : input_("")
     {
     }
 
-    ~request() = default;
+    ~request() { input_.clear(); }
 
-    inline auto parse() -> const http_request *
+    inline auto parse(const std::string &input) -> const http_request *
     {
       std::string meth;
       std::string uri;
       std::string version_raw;
-      for (int i = 0; i < input_.size(); i++)
+      int spaces_count = 1;
+      for (int i = 0; i < input.size(); i++)
       {
-        static int spaces_count = 1;
-        char ch[1] = {input_.at(i)};
-        if (input_.at(i) == ' ')
+        char ch[1] = {input.at(i)};
+        if (input.at(i) == ' ')
         {
           spaces_count++;
         }
@@ -72,6 +72,9 @@ namespace http
       http_req_.method = get_method(meth);
       http_req_.uri = get_uri(uri);
       http_req_.http_ver = get_version(version_raw);
+
+      if (!validate_request(&http_req_)) return nullptr;
+
       return &http_req_;
     }
 
@@ -115,6 +118,22 @@ namespace http
       }
 
       return 0;
+    }
+
+    inline static auto method_string(methods m) -> const std::string
+    {
+      switch (m)
+      {
+      case request::methods::Get: return "GET"; break;
+      case methods::Post: return "POST"; break;
+      case methods::Patch: return "PATCH"; break;
+      case methods::Put: return "PUT"; break;
+      case methods::Options: return "OPTIONS"; break;
+      case methods::Delete: return "DELETE"; break;
+      case methods::Trace: return "TRACE"; break;
+      case methods::Connect: return "CONNECT"; break;
+      default: return "GET"; break;
+      }
     }
 
   private:
