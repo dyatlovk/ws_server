@@ -1,16 +1,13 @@
 #pragma once
 
 #include <algorithm>
+#include <stl/string/ws_string.h++>
 #include <string>
-
-#include "fmt/core.h"
-#include "stl/string/ws_string.h++"
 
 namespace http
 {
   struct request
   {
-  public:
     enum class methods
     {
       Get,
@@ -23,6 +20,7 @@ namespace http
       Connect,
     };
 
+  public:
     struct http_request
     {
       methods method;
@@ -85,10 +83,7 @@ namespace http
 
     inline static auto get_method(const std::string &m) -> const methods
     {
-      auto str = ws_stl::trim_string(m);
-      char *chr = const_cast<char *>(str.c_str());
-      while (*chr)
-        *(chr++) = toupper((unsigned char)*chr);
+      auto str = ws_stl::to_upper(ws_stl::trim_string(m));
 
       if (str == "GET") return methods::Get;
       if (str == "POST") return methods::Post;

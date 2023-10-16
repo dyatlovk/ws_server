@@ -76,7 +76,7 @@ namespace tests::http::request
     ASSERT_EQ_FLOAT(bad_proto, 0, "http bad proto");
   })
 
-  TEST_CASE(parse_uri, {
+  TEST_CASE(get_uri, {
     auto r = ::http::request::get_uri("/uri");
     ASSERT_EQ_CHAR("/uri", r.c_str(), "uri");
 
@@ -94,7 +94,7 @@ namespace tests::http::request
   {
     parse_methods();
     parse_version();
-    parse_uri();
+    get_uri();
     parse();
   }
 } // namespace tests::http::request
