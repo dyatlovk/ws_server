@@ -46,6 +46,7 @@ namespace ws_stl
 
     return str;
   }
+
   inline auto to_lower(const std::string &str) -> const std::string
   {
     char *chr = const_cast<char *>(str.c_str());

@@ -30,14 +30,16 @@ namespace tests::stl
 
   TEST_CASE(uppercase, {
     auto upper = ws_stl::to_upper("lowercase");
-    ASSERT_EQ_CHAR("LOWERCASE", upper.c_str(), "uppercase");
-    auto u2 = ws_stl::to_lower("LoWerCASE");
-    ASSERT_EQ_CHAR("LOWERCASE", u2.c_str(), "lowercase");
+    ASSERT_EQ_CHAR("LOWERCASE", upper.c_str(), "uppercase 1");
+    auto u2 = ws_stl::to_upper("LoWerCASE");
+    ASSERT_EQ_CHAR("LOWERCASE", u2.c_str(), "lowercase 2");
+  })
 
+  TEST_CASE(lowercase, {
     auto lower = ws_stl::to_lower("UPPERCASE");
-    ASSERT_EQ_CHAR("uppercase", lower.c_str(), "lowercase");
+    ASSERT_EQ_CHAR("uppercase", lower.c_str(), "lowercase 1");
     auto l2 = ws_stl::to_lower("UpperCASE");
-    ASSERT_EQ_CHAR("uppercase", l2.c_str(), "lowercase");
+    ASSERT_EQ_CHAR("uppercase", l2.c_str(), "lowercase 2");
   })
 
   auto run() -> void
@@ -45,5 +47,6 @@ namespace tests::stl
     split();
     trim();
     uppercase();
+    lowercase();
   }
 } // namespace tests::stl
