@@ -1,7 +1,6 @@
-#include <fmt/core.h>
-
 #include "http/http_parser_test.h++"
 #include "http/http_request_test.h++"
+#include "http/http_uri_test.h++"
 #include "io/epoll_test.h++"
 #include "io/inet_soc_test.h++"
 #include "io/local_soc_test.h++"
@@ -15,5 +14,6 @@ int main()
   tests::http::run();
   tests::stl::run();
   tests::http::request::run();
+  tests::http::uri::run();
   return 0;
 }
