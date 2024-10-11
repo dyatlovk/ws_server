@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <stl/string/ws_string.h++>
 #include <string>
 

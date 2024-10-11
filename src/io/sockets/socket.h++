@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <string>
 #include <sys/socket.h>
+#include <cstdint>
 
 namespace io
 {
