@@ -45,6 +45,7 @@ file(GLOB WS_SOURCES
     src/io/sockets/local_socket.c++
     src/http/parser.c++
     src/http/uri.c++
+    src/http/response.c++
     )
 
 # Build type
