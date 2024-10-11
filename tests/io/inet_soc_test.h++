@@ -13,11 +13,11 @@ namespace tests::socket_inet
   {
     auto s = new sock("127.0.0.1", 3030, sock::address_support::ip4, sock::type_support::tcp);
     s->open();
-    s->bind();
-    s->listen();
     s->reuse_addr(false);
     s->reuse_port(false);
     s->set_non_blocking();
+    s->bind();
+    s->listen();
     return s;
   }
 
@@ -25,11 +25,11 @@ namespace tests::socket_inet
   {
     auto s = new sock("127.0.0.1", 3030, sock::address_support::ip4, sock::type_support::udp);
     s->open();
-    s->bind();
-    s->listen();
     s->reuse_addr(false);
     s->reuse_port(false);
     s->set_non_blocking();
+    s->bind();
+    s->listen();
     return s;
   }
 
@@ -128,7 +128,7 @@ namespace tests::socket_inet
     auto s = make_tcp();
     send_packet("hello");
     const auto connection = s->accept();
-    auto is_sended = s->write(connection, "test");
+    auto is_sended = s->write(connection, "test", 4);
     ASSERT_TRUE(is_sended, "send data");
     delete s;
   });

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <cstdint>
 #include <fcntl.h>
 #include <string>
 #include <sys/socket.h>
-#include <cstdint>
 
 namespace io
 {
@@ -85,10 +85,23 @@ namespace io
      *
      * @param[in]  conn  Connected socket.
      * @param[in]  buf   The buffer
+     * @param[in]  size   Buffer size in bytes
      *
      * @return     true on send ok
      */
-    virtual auto write(const int conn, const char *buf) -> bool = 0;
+    virtual auto write(const int conn, const char *buf, int size) -> bool = 0;
+
+    /**
+     * @brief      Like a write, but split data to chunks
+     * @see        io:socket:write
+     *
+     * @param[in]  conn   Connected socket.
+     * @param[in]  buf    The buffer
+     * @param[in]  size   Buffer size in bytes
+     *
+     * @return     sended data in bytes
+     */
+    virtual auto write_chunked(const int conn, const char *buf, int size) -> int = 0;
 
     /**
      * @brief      Get file descriptor
@@ -181,8 +194,7 @@ namespace io
       socklen_t len = sizeof(value);
       auto result = getsockopt(fd, lvl, opt, &value, &len);
 
-      if (result == -1)
-        return -1;
+      if (result == -1) return -1;
 
       return value;
     }

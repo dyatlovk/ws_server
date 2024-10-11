@@ -1,5 +1,6 @@
 #include "inet_socket.h++"
 
+#include <cstring>
 #include <fmt/core.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -26,8 +27,7 @@ namespace io
 
   auto inet_socket::open() -> bool
   {
-    if (state_ >= states::opened)
-      return true;
+    if (state_ >= states::opened) return true;
 
     fd = ::socket(domain_, type_, proto_);
     if (fd == -1)
@@ -49,8 +49,7 @@ namespace io
 
   auto inet_socket::bind() -> bool
   {
-    if (state_ >= states::binded)
-      return true;
+    if (state_ >= states::binded) return true;
 
     const int b = ::bind(fd, (const struct sockaddr *)&inet_addr, sizeof(inet_addr));
 
@@ -69,8 +68,7 @@ namespace io
 
   auto inet_socket::listen(const int max) -> bool
   {
-    if (state_ >= states::listen)
-      return true;
+    if (state_ >= states::listen) return true;
 
     if (::listen(fd, max) == -1)
     {
@@ -122,9 +120,9 @@ namespace io
     return readBuf;
   }
 
-  auto inet_socket::write(const int conn, const char *buf) -> bool
+  auto inet_socket::write(const int conn, const char *buf, int size) -> bool
   {
-    int r = ::write(conn, buf, strlen(buf));
+    int r = ::write(conn, buf, size);
 
     if (r == -1)
     {
@@ -140,6 +138,20 @@ namespace io
     fmt::println("[Sock]: writed {} b to fd#{}", r, conn);
 
     return true;
+  }
+
+  auto inet_socket::write_chunked(const int conn, const char *buf, int size) -> int
+  {
+    int num_sent = 0;
+    while (size > 0)
+    {
+      num_sent = ::write(conn, buf, size);
+      if (num_sent == -1) return num_sent;
+      buf += num_sent;
+      size -= num_sent;
+    }
+
+    return num_sent;
   }
 
   auto inet_socket::set_non_blocking() -> void

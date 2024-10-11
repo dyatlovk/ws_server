@@ -25,7 +25,9 @@ namespace io
 
     auto read(const int conn, const int bufSize = 1024) -> const std::string & override;
 
-    auto write(const int conn, const char *buf) -> bool override;
+    auto write(const int conn, const char *buf, int size) -> bool override;
+
+    auto write_chunked(const int conn, const char *buf, int size) -> int override;
 
     auto set_non_blocking() -> void;
 

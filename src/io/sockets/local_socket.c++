@@ -26,8 +26,7 @@ namespace io
     type_ = SOCK_SEQPACKET;
     proto_ = 0;
 
-    if (state_ >= states::opened)
-      return true;
+    if (state_ >= states::opened) return true;
 
     fd = ::socket(domain_, type_, proto_);
     if (fd == -1)
@@ -49,8 +48,7 @@ namespace io
 
   auto local_socket::bind() -> bool
   {
-    if (state_ >= states::binded)
-      return true;
+    if (state_ >= states::binded) return true;
 
     const int b = ::bind(fd, (const struct sockaddr *)&unix_addr, sizeof(unix_addr));
 
@@ -69,8 +67,7 @@ namespace io
 
   auto local_socket::listen(const int max) -> bool
   {
-    if (state_ >= states::listen)
-      return true;
+    if (state_ >= states::listen) return true;
 
     if (::listen(fd, max) == -1)
     {
@@ -123,8 +120,14 @@ namespace io
     return readBuf;
   }
 
-  auto local_socket::write(const int conn, const char *buf) -> bool {
+  auto local_socket::write(const int conn, const char *buf, int size) -> bool
+  {
     return true;
+  }
+
+  auto local_socket::write_chunked(const int conn, const char *buf, int size) -> int
+  {
+    return 0;
   }
 
   auto local_socket::set_non_blocking() -> void
