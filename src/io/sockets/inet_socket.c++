@@ -137,6 +137,8 @@ namespace io
       return false;
     }
 
+    fmt::println("[Sock]: writed {} b to fd#{}", r, conn);
+
     return true;
   }
 

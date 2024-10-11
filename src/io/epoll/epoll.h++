@@ -181,7 +181,7 @@ namespace io
 
   private:
     constexpr static const unsigned int MAX_EVENTS_DEFAULT = 0x3e8; // 1000
-    constexpr static const int WAIT_TIMEOUT_DEFAULT = 0xffffffff; // -1
+    constexpr static const int WAIT_TIMEOUT_DEFAULT = 0x1; // 1
 
     int fd; // epoll file descriptor
     struct epoll_event evlist, events_[MAX_EVENTS_DEFAULT];

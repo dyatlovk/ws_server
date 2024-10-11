@@ -19,7 +19,6 @@ namespace io
 
   epoll::~epoll()
   {
-    shutdown();
     fmt::println("[Epoll] [{fd}] destructed [OK]", fmt::arg("fd", fd));
   }
 
@@ -44,7 +43,7 @@ namespace io
 
       if (sock == masterSocket)
       {
-        if (events & EPOLLIN)
+        if (events & Events::READ)
         {
           if (peer_accept() == -1)
           {
@@ -55,12 +54,13 @@ namespace io
 
       if (sock != masterSocket)
       {
-        if (events & EPOLLET | EPOLLOUT)
+        if (events & EPOLLET | Events::WRITE)
         {
+          fmt::println("[Epoll] write #{}", sock);
           peer_read(sock);
         }
 
-        if (events & EPOLLRDHUP)
+        if (events & Events::CLOSE)
         {
           try
           {
@@ -87,6 +87,7 @@ namespace io
       fmt::println("[Epoll] shutdown error {}", e.what());
     }
     close(fd);
+    close(masterSocket);
     fmt::println("[Epoll] shutdown [OK]", fmt::arg("fd", fd));
   }
 
@@ -98,6 +99,7 @@ namespace io
 
     watched_.insert(socket);
     fmt::println("[Epoll] register client socket: {} [OK]", socket);
+    fmt::println("[Epoll] [{fd}] ({cl}) clients observing", fmt::arg("fd", fd), fmt::arg("cl", watched_size()));
   }
 
   auto epoll::register_master(const int socket, const uint32_t e) -> void
@@ -134,7 +136,7 @@ namespace io
       }
     }
 
-    fmt::println("[Epoll] [{fd}] ({cl}) clients unwatching", fmt::arg("fd", fd), fmt::arg("cl", watched_size()));
+    fmt::println("[Epoll] [{fd}] ({cl}) clients observing", fmt::arg("fd", fd), fmt::arg("cl", watched_size()));
   }
 
   auto epoll::peer_accept() -> int
