@@ -19,7 +19,7 @@
                 "rhs": "Linux"
             },
             "cacheVariables": {
-                
+                "SRV_BUILD_EXAMPLES": true
             }
         },
         {
@@ -28,7 +28,7 @@
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "WS_BUILD_TESTS": true
+                "SRV_BUILD_TESTS": true
             }
         },
         {
@@ -62,6 +62,25 @@
             "output": {
                 "outputOnFailure": true
             }
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "debug",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "makefile-x86_64-linux-debug"
+                },
+                {
+                    "type": "build",
+                    "name": "debug-build-linux"
+                },
+                {
+                    "type": "test",
+                    "name": "test-amd64"
+                }
+            ]
         }
     ]
 }

@@ -1,26 +1,19 @@
 cmake_minimum_required(VERSION 3.26)
-project(wsTest)
+project(SRVTest)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # check if socat is exist
 find_program(SOCAT_EXIST "socat" REQUIRED)
 if(!SOCAT_EXIST)
-	message(FATAL_ERROR "this tests needed a socat")
+    message(FATAL_ERROR "this tests needed a socat")
 endif()
 
-file(GLOB SOURCES 
-	main.c++ 
-	${WS_INCLUDE}/io/sockets/inet_socket.c++
-	${WS_INCLUDE}/io/sockets/local_socket.c++
-	${WS_INCLUDE}/io/epoll/epoll.c++
-	${WS_INCLUDE}/http/parser.c++
-	${WS_INCLUDE}/http/uri.c++
-	)
+set(TEST_INCLUDE INTERNAL .)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${FMT_INCLUDE} ${WS_INCLUDE})
-target_link_libraries(${PROJECT_NAME} ${FMTLIB})
+add_executable(${PROJECT_NAME} ${SRC} main.c++)
+target_include_directories(${PROJECT_NAME} PUBLIC ${FMT_INCLUDE} ${SRV_INCLUDE} ${TEST_INCLUDE})
+target_link_libraries(${PROJECT_NAME} ${FMTLIB} server:core)
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})

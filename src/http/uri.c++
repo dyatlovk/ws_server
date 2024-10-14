@@ -1,6 +1,6 @@
 #include "uri.h++"
 
-#include <stl/string/ws_string.h++>
+#include "../stl/string/ws_string.h++"
 
 namespace http
 {
