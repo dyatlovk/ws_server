@@ -75,12 +75,11 @@ namespace examples
             const auto file = this->read_path(request->uri.c_str());
             if (!file.empty())
             {
-              auto ext = std::filesystem::path(request->uri.c_str()).extension().string();
-              ext.erase(0, 1);
+              auto ext = std::filesystem::path(request->uri.c_str()).extension().string().erase(0, 1);
               http::mime mime;
               auto file_mime = mime.get_ext(ext);
               http::response res{200, "OK"};
-              res.add_header("Server", ::examples::server::SERVER_NAME);
+              res.add_header("Server", ::examples::server::NAME);
               res.add_header("Content-Type", file_mime.mime.append(";charset=utf-8").c_str());
               res.add_header("Content-Length", std::to_string(file.size()).c_str());
               res.add_header("Cache-Control", "max-age=100,immutable");
@@ -98,7 +97,7 @@ namespace examples
           {
             const auto html = this->read_path("/404.html");
             http::response res{404, "Not Found"};
-            res.add_header("Server", ::examples::server::SERVER_NAME);
+            res.add_header("Server", ::examples::server::NAME);
             res.add_header("Content-Type", "text/html;charset=utf-8");
             res.add_header("Content-Length", std::to_string(html.size()).c_str());
             res.append_body(html.data(), html.size());
@@ -107,6 +106,20 @@ namespace examples
             epoll_->unwatch(socket);
             return;
           };
+
+          if (router->method != request->method)
+          {
+            const auto html = this->read_path("/405.html");
+            http::response res{405, "Not Allowed"};
+            res.add_header("Server", ::examples::server::NAME);
+            res.add_header("Content-Type", "text/html;charset=utf-8");
+            res.add_header("Content-Length", std::to_string(html.size()).c_str());
+            res.append_body(html.data(), html.size());
+            auto msg = res.get_message();
+            srv_->write(socket, msg.c_str(), msg.size());
+            epoll_->unwatch(socket);
+            return;
+          }
 
           auto res = router->handler(&req);
           auto msg = res.get_message();

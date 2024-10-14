@@ -20,11 +20,11 @@ namespace examples
     struct router;
 
     using req = http::request;
-    using router_func = std::function<http::response(http::request *)>;
     using router_map = std::vector<router *>;
+    using router_func = std::function<http::response(http::request *)>;
 
   public:
-    static constexpr const char *SERVER_NAME = "Robco Server";
+    static constexpr const char *NAME = "Robco Server";
 
   public:
     server(const char *host = HOST_DEFAULT, int port = PORT_DEFAULT);

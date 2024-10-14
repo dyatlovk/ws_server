@@ -18,6 +18,7 @@ if(SRV_BUILD_TESTS)
     set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
     enable_testing()
     add_subdirectory(tests)
+    add_subdirectory(libs/args/tests)
 endif()
 
 #examples

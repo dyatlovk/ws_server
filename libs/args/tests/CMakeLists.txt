@@ -8,4 +8,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 add_executable(${PROJECT_NAME} ${SRC} main.c++)
 target_link_libraries(${PROJECT_NAME} server:args)
 
-add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME})
+add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
