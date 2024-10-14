@@ -21,7 +21,7 @@ namespace http
 
   auto response::server_error(const std::string &msg) -> std::unique_ptr<response>
   {
-    auto r = std::make_unique<response>(500);
+    auto r = std::make_unique<response>(500, "Server error");
     r->add_header("Server", "WS");
     r->add_header("Content-Type", "text/html;charset=utf-8");
     r->add_header("Content-Length", std::to_string(msg.size()).c_str());
@@ -30,7 +30,7 @@ namespace http
 
   auto response::not_found(const std::string &msg) -> std::unique_ptr<response>
   {
-    auto r = std::make_unique<response>(404);
+    auto r = std::make_unique<response>(404, "Not found");
     r->add_header("Server", "WS");
     r->add_header("Content-Type", "text/html;charset=utf-8");
     r->add_header("Content-Length", std::to_string(msg.size()).c_str());

@@ -27,7 +27,7 @@ namespace examples
       , host_(host)
       , port_(port)
       , epoll_(new io::epoll())
-      , static_dir_(std::filesystem::current_path().c_str())
+      , static_dir_(std::filesystem::current_path().string() + "/public")
   {
     srv_->open();
     srv_->set_non_blocking();
@@ -52,9 +52,7 @@ namespace examples
       return;
     }
     epoll_->on_connection([](int sock) { fmt::println("new connection {}", sock); });
-    // epoll_->on_write(
-    //     [this](int sock, const char *data) { thr_pool.enqueue([this, &sock, &data]() { on_response(sock, data); });
-    //     });
+
     epoll_->on_write(
         [this](int socket, const char *buf)
         {
@@ -71,11 +69,34 @@ namespace examples
             return;
           };
 
+          { // serve static files
+            const auto file = this->read_path(request->uri.c_str());
+            if (!file.empty())
+            {
+              http::response res{200, "OK"};
+              res.add_header("Server", ::examples::server::SERVER_NAME);
+              res.add_header("Content-Type", "text/css;charset=utf-8");
+              res.add_header("Content-Length", std::to_string(file.size()).c_str());
+              res.add_header("Cache-Control", "max-age=100,immutable");
+              res.append_body(file.data(), file.size());
+              auto msg = res.get_message();
+              srv_->write(socket, msg.c_str(), msg.size());
+              epoll_->unwatch(socket);
+              return;
+            }
+          }
+
+          // handle routers
           auto router = this->match_route(request->uri.c_str());
           if (!router)
           {
-            auto response = http::response::not_found();
-            auto msg = response->get_message();
+            const auto html = this->read_path("/404.html");
+            http::response res{404, "Not Found"};
+            res.add_header("Server", ::examples::server::SERVER_NAME);
+            res.add_header("Content-Type", "text/html;charset=utf-8");
+            res.add_header("Content-Length", std::to_string(html.size()).c_str());
+            res.append_body(html.data(), html.size());
+            auto msg = res.get_message();
             srv_->write(socket, msg.c_str(), msg.size());
             epoll_->unwatch(socket);
             return;
@@ -86,6 +107,7 @@ namespace examples
           srv_->write(socket, msg.c_str(), msg.size());
           epoll_->unwatch(socket);
         });
+
     epoll_->on_close([](int socket) { fmt::println("client closed {}", socket); });
 
     server_running = true;
@@ -128,32 +150,22 @@ namespace examples
     server_running = false;
   }
 
-  auto server::read_tpl(const std::string &p) -> const std::string
+  auto server::read_path(const std::string &p) -> const std::string
   {
+    const std::string path = static_dir_ + p;
+    const auto is_regular_file = std::filesystem::is_regular_file(path);
+    const auto is_file_exist = std::filesystem::exists(path);
+
+    if (!is_regular_file || !is_file_exist)
+    {
+      return "";
+    }
+
     std::stringstream buf;
-    std::ifstream file(p, std::ios::binary);
+    std::ifstream file(path, std::ios::binary);
     buf << file.rdbuf();
     file.close();
     return buf.str();
-  }
-
-  auto server::from_char(const unsigned char *data) -> std::vector<char>
-  {
-    std::vector<char> buf;
-    int i{0};
-    while (i < 656)
-    {
-      buf.push_back(data[i++]);
-    }
-    return buf;
-  }
-
-  auto server::list_served_files() -> void
-  {
-    for (const auto &entry : std::filesystem::recursive_directory_iterator(static_dir_))
-    {
-      fmt::println("{}", entry.path().c_str());
-    }
   }
 
   auto server::add_route(const char *url, req::methods method, router_func &&handler) -> void
