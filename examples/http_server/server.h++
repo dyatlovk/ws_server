@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <http/mime.h++>
 #include <http/request.h++>
 #include <http/response.h++>
 #include <io/epoll/epoll.h++>

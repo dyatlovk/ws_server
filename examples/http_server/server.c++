@@ -12,6 +12,8 @@
 #include <io/epoll/epoll.h++>
 #include <stdexcept>
 
+#include "http/mime.h++"
+
 namespace examples
 {
   std::atomic<bool> server_running = false;
@@ -73,9 +75,13 @@ namespace examples
             const auto file = this->read_path(request->uri.c_str());
             if (!file.empty())
             {
+              auto ext = std::filesystem::path(request->uri.c_str()).extension().string();
+              ext.erase(0, 1);
+              http::mime mime;
+              auto file_mime = mime.get_ext(ext);
               http::response res{200, "OK"};
               res.add_header("Server", ::examples::server::SERVER_NAME);
-              res.add_header("Content-Type", "text/css;charset=utf-8");
+              res.add_header("Content-Type", file_mime.mime.append(";charset=utf-8").c_str());
               res.add_header("Content-Length", std::to_string(file.size()).c_str());
               res.add_header("Cache-Control", "max-age=100,immutable");
               res.append_body(file.data(), file.size());
