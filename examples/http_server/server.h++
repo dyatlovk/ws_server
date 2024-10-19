@@ -18,7 +18,8 @@ namespace examples
 
     using req = http::request;
     using router_map = std::vector<router *>;
-    using router_func = std::function<http::response(http::request *)>;
+    using router_func = std::function<void(http::request *, http::response *)>;
+    using methods_map = std::vector<req::methods>;
 
   public:
     constexpr static const char *NAME_DEFAULT = "BlackMesa";
@@ -31,6 +32,7 @@ namespace examples
     auto run() -> void;
 
     auto add_route(const char *url, req::methods method, router_func &&handler) -> void;
+    auto add_route(const char *url, methods_map methods, router_func &&handler) -> void;
 
     auto serve_static(const char *dir) -> void { this->static_dir_ = dir; }
 
@@ -54,10 +56,11 @@ namespace examples
     struct router
     {
       const char *url;
-      req::methods method;
+      methods_map methods;
       router_func handler;
     };
     std::vector<router *> routes_;
     auto match_route(const char *url) -> router *;
+    auto is_method_allowed(const router *router, const req::methods method) -> bool;
   };
 } // namespace examples

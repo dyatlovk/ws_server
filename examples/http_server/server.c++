@@ -106,7 +106,8 @@ namespace examples
             return;
           };
 
-          if (router->method != request->method)
+          const auto is_method_allowed = this->is_method_allowed(router, request->method);
+          if (!is_method_allowed)
           {
             http::response res{405, "Not Allowed"};
             res.with_added_header("Content-Type", "text/html;charset=utf-8");
@@ -118,8 +119,9 @@ namespace examples
             return;
           }
 
-          auto res = router->handler(&req);
-          auto msg = res.get_message();
+          http::response response{200, "OK"};
+          router->handler(&req, &response);
+          auto msg = response.get_message();
           srv_->write(socket, msg, std::strlen(msg));
           epoll_->unwatch(socket);
         });
@@ -170,7 +172,16 @@ namespace examples
   {
     router *router_ = new router;
     router_->url = url;
-    router_->method = method;
+    router_->methods.push_back(method);
+    router_->handler = std::move(handler);
+    this->routes_.push_back(router_);
+  }
+
+  auto server::add_route(const char *url, methods_map methods, router_func &&handler) -> void
+  {
+    router *router_ = new router;
+    router_->url = url;
+    router_->methods = methods;
     router_->handler = std::move(handler);
     this->routes_.push_back(router_);
   }
@@ -194,5 +205,25 @@ namespace examples
     const std::string path = static_dir_ + p;
 
     return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
+  }
+
+  auto server::is_method_allowed(const router *router, const req::methods method) -> bool
+  {
+    for (const auto &route : routes_)
+    {
+      if (route != router)
+      {
+        continue;
+      }
+
+      for (const auto &m : route->methods)
+      {
+        if (m == method)
+        {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 } // namespace examples
