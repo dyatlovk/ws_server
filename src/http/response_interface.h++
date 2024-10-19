@@ -27,5 +27,7 @@ namespace http
      * Return message builded message
      */
     virtual auto get_message() -> const char * = 0;
+
+    virtual auto with_redirect(const char *location, const int code, const char *reason) -> void = 0;
   };
 } // namespace http

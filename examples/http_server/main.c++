@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
         res->with_added_header("Content-Type", "text/html;charset=utf-8");
         if (req->http_req_.method == method::Post)
         {
-          res->with_view("/post.html");
+          res->with_redirect("/about");
           return;
         }
         res->with_view("/index.html");

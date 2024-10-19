@@ -48,8 +48,11 @@ namespace http
 
     auto get_message() -> const char * override;
 
+
   public:
     auto with_view(const char *p) -> void;
+
+    auto with_redirect(const char *location, const int code = 303, const char *phrase = "See Other") -> void override;
 
   private:
     int code_;

@@ -175,4 +175,10 @@ namespace http
 
     this->with_body(&stream_buf);
   }
+
+  auto response::with_redirect(const char *location, const int code, const char *phrase) -> void
+  {
+    with_status(code, phrase);
+    with_added_header("Location", location);
+  }
 } // namespace http
