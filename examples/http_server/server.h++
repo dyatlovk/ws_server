@@ -2,6 +2,7 @@
 
 #include <http/request.h++>
 #include <http/response.h++>
+#include <http/router.h++>
 #include <io/epoll/epoll.h++>
 #include <io/sockets/inet_socket.h++>
 #include <utils/thread_pool.h++>
@@ -14,12 +15,8 @@ namespace examples
     static constexpr const char *CRLF = "\r\n";
     static constexpr const char *HOST_DEFAULT = "127.0.0.1";
 
-    struct router;
-
     using req = http::request;
-    using router_map = std::vector<router *>;
-    using router_func = std::function<void(http::request *, http::response *)>;
-    using methods_map = std::vector<req::methods>;
+    using router = http::router;
 
   public:
     constexpr static const char *NAME_DEFAULT = "BlackMesa";
@@ -31,9 +28,6 @@ namespace examples
 
     auto run() -> void;
 
-    auto add_route(const char *url, req::methods method, router_func &&handler) -> void;
-    auto add_route(const char *url, methods_map methods, router_func &&handler) -> void;
-
     auto serve_static(const char *dir) -> void { this->static_dir_ = dir; }
 
     auto get_static_dir() -> const std::string { return this->static_dir_; }
@@ -41,6 +35,8 @@ namespace examples
     auto shutdown() -> void;
 
     auto is_file_exist(const std::string &p) -> bool;
+
+    auto with_routers(const router *r) -> void { this->router_ = *r; }
 
   private:
     int port_;
@@ -53,14 +49,6 @@ namespace examples
     utils::thread_pool thr_pool;
 
   private:
-    struct router
-    {
-      const char *url;
-      methods_map methods;
-      router_func handler;
-    };
-    std::vector<router *> routes_;
-    auto match_route(const char *url) -> router *;
-    auto is_method_allowed(const router *router, const req::methods method) -> bool;
+    router router_;
   };
 } // namespace examples

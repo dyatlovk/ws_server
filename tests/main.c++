@@ -4,6 +4,7 @@
 #include "http/http_request_test.h++"
 #include "http/http_uri_test.h++"
 #include "http/response_test.h++"
+#include "http/router_test.h++"
 #include "http/stream_test.h++"
 #include "io/epoll_test.h++"
 #include "io/inet_soc_test.h++"
@@ -23,6 +24,7 @@ int main()
   tests::http::uri::run();
   tests::http::response::run();
   tests::http::stream::run();
+  tests::http::router::run();
 
   auto t_end = std::chrono::high_resolution_clock::now();
   double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();

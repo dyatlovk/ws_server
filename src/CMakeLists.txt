@@ -15,6 +15,7 @@ file(GLOB SRV_SOURCES
     http/uri.c++
     http/stream.c++
     http/response.c++
+    http/router.c++
     utils/thread_pool.c++
 )
 

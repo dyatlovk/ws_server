@@ -7,8 +7,6 @@
 #include <fmt/core.h>
 #include <http/mime.h++>
 #include <http/parser.h++>
-#include <http/request.h++>
-#include <http/response.h++>
 #include <io/epoll/epoll.h++>
 #include <stdexcept>
 
@@ -28,6 +26,7 @@ namespace examples
       , port_(port)
       , epoll_(new io::epoll())
       , static_dir_(std::filesystem::current_path().string() + "/public")
+      , router_()
   {
     srv_->open();
     srv_->set_non_blocking();
@@ -93,7 +92,7 @@ namespace examples
           }
 
           // handle routers
-          auto router = this->match_route(request->uri.c_str());
+          auto router = router_.match(request->uri.c_str());
           if (!router)
           {
             http::response res{404, "Not Found"};
@@ -106,7 +105,7 @@ namespace examples
             return;
           };
 
-          const auto is_method_allowed = this->is_method_allowed(router, request->method);
+          const auto is_method_allowed = router_.is_method_allowed(router, request->method);
           if (!is_method_allowed)
           {
             http::response res{405, "Not Allowed"};
@@ -133,10 +132,6 @@ namespace examples
 
   server::~server()
   {
-    for (const auto &router : routes_)
-    {
-      delete router;
-    }
     if (epoll_) delete epoll_;
     if (srv_) delete srv_;
     fmt::println("server is shutting down");
@@ -168,62 +163,10 @@ namespace examples
     server_running = false;
   }
 
-  auto server::add_route(const char *url, req::methods method, router_func &&handler) -> void
-  {
-    router *router_ = new router;
-    router_->url = url;
-    router_->methods.push_back(method);
-    router_->handler = std::move(handler);
-    this->routes_.push_back(router_);
-  }
-
-  auto server::add_route(const char *url, methods_map methods, router_func &&handler) -> void
-  {
-    router *router_ = new router;
-    router_->url = url;
-    router_->methods = methods;
-    router_->handler = std::move(handler);
-    this->routes_.push_back(router_);
-  }
-
-  auto server::match_route(const char *url) -> router *
-  {
-    for (const auto &route : routes_)
-    {
-      if (strcmp(route->url, url) != 0)
-      {
-        continue;
-      }
-
-      return route;
-    }
-    return nullptr;
-  }
-
   auto server::is_file_exist(const std::string &p) -> bool
   {
     const std::string path = static_dir_ + p;
 
     return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
-  }
-
-  auto server::is_method_allowed(const router *router, const req::methods method) -> bool
-  {
-    for (const auto &route : routes_)
-    {
-      if (route != router)
-      {
-        continue;
-      }
-
-      for (const auto &m : route->methods)
-      {
-        if (m == method)
-        {
-          return true;
-        }
-      }
-    }
-    return false;
   }
 } // namespace examples
