@@ -5,14 +5,12 @@
 #include <cstring>
 #include <filesystem>
 #include <fmt/core.h>
-#include <fstream>
+#include <http/mime.h++>
 #include <http/parser.h++>
 #include <http/request.h++>
 #include <http/response.h++>
 #include <io/epoll/epoll.h++>
 #include <stdexcept>
-
-#include "http/mime.h++"
 
 namespace examples
 {
@@ -44,7 +42,7 @@ namespace examples
     try
     {
       epoll_->create();
-      epoll_->set_timeout(2000);
+      epoll_->set_timeout(1000);
       epoll_->register_master(srv_->get_fd(), io::epoll::Events::READ);
     }
     catch (std::runtime_error &e)
@@ -63,29 +61,32 @@ namespace examples
           http::request req;
           auto request = req.parse(req_line);
           if (!request)
-          {
-            auto response = http::response::server_error();
-            auto msg = response->get_message();
-            srv_->write(socket, msg.c_str(), msg.size());
+          { // server error
+            const char *phrase = "Server error";
+            http::response res{500, phrase};
+            res.with_added_header("Server", ::examples::server::NAME_DEFAULT);
+            res.with_added_header("Content-Type", "text/html;charset=utf-8");
+            res.with_added_header("Content-Length", std::to_string(std::strlen(phrase)).c_str());
+            auto msg = res.get_message();
+            srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
             return;
           };
 
           { // serve static files
-            const auto file = this->read_path(request->uri.c_str());
-            if (!file.empty())
+            const auto file = this->is_file_exist(request->uri.c_str());
+            if (file)
             {
               auto ext = std::filesystem::path(request->uri.c_str()).extension().string().erase(0, 1);
               http::mime mime;
               auto file_mime = mime.get_ext(ext);
               http::response res{200, "OK"};
-              res.add_header("Server", ::examples::server::NAME);
-              res.add_header("Content-Type", file_mime.mime.append(";charset=utf-8").c_str());
-              res.add_header("Content-Length", std::to_string(file.size()).c_str());
-              res.add_header("Cache-Control", "max-age=100,immutable");
-              res.append_body(file.data(), file.size());
+              res.with_added_header("Server", ::examples::server::NAME_DEFAULT);
+              res.with_added_header("Content-Type", file_mime.mime.append(";charset=utf-8").c_str());
+              res.with_added_header("Cache-Control", "max-age=100,immutable");
+              res.with_view(request->uri.c_str());
               auto msg = res.get_message();
-              srv_->write(socket, msg.c_str(), msg.size());
+              srv_->write(socket, msg, std::strlen(msg));
               epoll_->unwatch(socket);
               return;
             }
@@ -95,35 +96,31 @@ namespace examples
           auto router = this->match_route(request->uri.c_str());
           if (!router)
           {
-            const auto html = this->read_path("/404.html");
             http::response res{404, "Not Found"};
-            res.add_header("Server", ::examples::server::NAME);
-            res.add_header("Content-Type", "text/html;charset=utf-8");
-            res.add_header("Content-Length", std::to_string(html.size()).c_str());
-            res.append_body(html.data(), html.size());
+            res.with_added_header("Server", ::examples::server::NAME_DEFAULT);
+            res.with_added_header("Content-Type", "text/html;charset=utf-8");
+            res.with_view("/404.html");
             auto msg = res.get_message();
-            srv_->write(socket, msg.c_str(), msg.size());
+            srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
             return;
           };
 
           if (router->method != request->method)
           {
-            const auto html = this->read_path("/405.html");
             http::response res{405, "Not Allowed"};
-            res.add_header("Server", ::examples::server::NAME);
-            res.add_header("Content-Type", "text/html;charset=utf-8");
-            res.add_header("Content-Length", std::to_string(html.size()).c_str());
-            res.append_body(html.data(), html.size());
+            res.with_added_header("Content-Type", "text/html;charset=utf-8");
+            res.with_added_header("Server", ::examples::server::NAME_DEFAULT);
+            res.with_view("/405.html");
             auto msg = res.get_message();
-            srv_->write(socket, msg.c_str(), msg.size());
+            srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
             return;
           }
 
           auto res = router->handler(&req);
           auto msg = res.get_message();
-          srv_->write(socket, msg.c_str(), msg.size());
+          srv_->write(socket, msg, std::strlen(msg));
           epoll_->unwatch(socket);
         });
 
@@ -169,24 +166,6 @@ namespace examples
     server_running = false;
   }
 
-  auto server::read_path(const std::string &p) -> const std::string
-  {
-    const std::string path = static_dir_ + p;
-    const auto is_regular_file = std::filesystem::is_regular_file(path);
-    const auto is_file_exist = std::filesystem::exists(path);
-
-    if (!is_regular_file || !is_file_exist)
-    {
-      return "";
-    }
-
-    std::stringstream buf;
-    std::ifstream file(path, std::ios::binary);
-    buf << file.rdbuf();
-    file.close();
-    return buf.str();
-  }
-
   auto server::add_route(const char *url, req::methods method, router_func &&handler) -> void
   {
     router *router_ = new router;
@@ -208,5 +187,12 @@ namespace examples
       return route;
     }
     return nullptr;
+  }
+
+  auto server::is_file_exist(const std::string &p) -> bool
+  {
+    const std::string path = static_dir_ + p;
+
+    return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
   }
 } // namespace examples

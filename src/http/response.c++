@@ -1,83 +1,142 @@
 #include "response.h++"
 
-#include <cstring>
+#include <cstring> // strlen
+#include <filesystem>
+#include <fstream>
+
+#include "stream.h++"
 
 namespace http
 {
-  response::response(const uint16_t code, const std::string &code_msg)
+  stream stream_;
+
+  response::response(int code, const char *reason)
       : code_(code)
-      , body_{}
-      , headers_("")
-      , msg_()
-      , code_msg_(code_msg)
+      , reason_(reason)
+      , proto_v_(PROTO_DEFAULT)
+      , headers_()
+      , msg_("")
   {
+    with_proto_ver("1.1");
   }
 
   response::~response()
   {
-    body_.clear();
-    headers_.clear();
+    this->code_ = 0;
+    this->headers_.clear();
+    this->proto_v_ = PROTO_DEFAULT;
+    this->msg_.clear();
   }
 
-  auto response::server_error(const std::string &msg) -> std::unique_ptr<response>
+  auto response::get_status_code() -> int
   {
-    auto r = std::make_unique<response>(500, "Server error");
-    r->add_header("Server", "WS");
-    r->add_header("Content-Type", "text/html;charset=utf-8");
-    r->add_header("Content-Length", std::to_string(msg.size()).c_str());
-    return r;
+    if (code_ < 100 || code_ > 599) return 500;
+
+    return code_;
   }
 
-  auto response::not_found(const std::string &msg) -> std::unique_ptr<response>
+  auto response::with_status(int code, const char *reason) -> response *
   {
-    auto r = std::make_unique<response>(404, "Not found");
-    r->add_header("Server", "WS");
-    r->add_header("Content-Type", "text/html;charset=utf-8");
-    r->add_header("Content-Length", std::to_string(msg.size()).c_str());
-    return r;
+    code_ = code;
+    reason_ = reason;
+
+    return this;
   }
 
-  auto response::add_header(const char *key, const char *val) -> void
+  auto response::with_proto_ver(const char *ver) -> void
   {
-    this->headers_.append(key);
-    this->headers_.append(":");
-    this->headers_.append(val);
-    this->headers_.append(CRLF);
+    std::string version;
+    version.reserve(strlen(PROTO_PREFIX) + strlen(ver));
+    version.append(PROTO_PREFIX);
+    version.append(ver);
+    this->proto_v_ = version;
   }
 
-  auto response::add_common_headers() -> void
+  auto response::has_header(const char *key) -> bool
   {
-    add_header("Server", "WS");
+    const auto found = this->get_header(key);
+    if (!found) return false;
+
+    return found->key == key;
   }
 
-  auto response::append_body(std::vector<char> *buf) -> void
+  auto response::with_header(const char *key, const char *val) -> void
   {
-    int i{0};
-    while (i < buf->size())
+    this->headers_.clear();
+    this->headers_.push_back({key, val});
+  }
+
+  auto response::with_added_header(const char *key, const char *val) -> void
+  {
+    const auto found = this->get_header(key);
+    if (found)
     {
-      const char *ch = buf[i++].data();
-      body_.push_back(*ch);
+      int it = 0;
+      for (const auto &header : headers_)
+      {
+        if (header.key != found->key)
+        {
+          continue;
+        }
+        headers_.at(it) = *found;
+        ++it;
+      }
+      return;
     }
+
+    this->headers_.push_back({key, val});
   }
 
-  auto response::append_body(const char *buf, int size) -> void
+  auto response::get_header(const char *key) -> header *
   {
-    int i{0};
-    while (i < size)
+    if (std::strlen(key) == 0) return nullptr;
+    for (const auto &item : headers_)
     {
-      body_.push_back(buf[i++]);
+      if (item.key != key)
+      {
+        continue;
+      }
+
+      return const_cast<header *>(&item);
     }
+
+    return nullptr;
   }
 
-  auto response::get_message() -> const std::string &
+  auto response::with_body(stream_interface::buffer body) -> void
   {
-    std::string http = PROTO;
+    stream_.write_bytes(body);
+  }
+
+  auto response::with_body(stream_interface::buffer *body) -> void
+  {
+    stream_.write_bytes(body);
+  }
+
+  auto response::get_body() -> stream_interface::buffer
+  {
+    return *stream_.read();
+  }
+
+  auto response::get_message() -> const char *
+  {
+    std::string http = proto_v_;
     http += " ";
-    http += std::to_string(code_) + " " + code_msg_;
+    http += std::to_string(code_) + " " + reason_;
     http += CRLF;
-    http += headers_;
+
+    with_added_header("Content-Length", std::to_string(stream_.get_size()).c_str());
+
+    for (const auto &header : headers_)
+    {
+      http += header.key;
+      http += ":";
+      http += header.value;
+      http += CRLF;
+    }
+
     http += CRLF;
-    for (const auto &item : body_)
+    for (const auto &item : *stream_.read())
     {
       http += item;
     }
@@ -88,6 +147,32 @@ namespace http
       msg_.push_back(http[i++]);
     }
 
-    return this->msg_;
+    return this->msg_.c_str();
+  }
+
+  auto response::with_view(const char *p) -> void
+  {
+    const auto static_dir = std::filesystem::current_path().string() + "/public";
+    const std::string path = static_dir + p;
+    const auto is_regular_file = std::filesystem::is_regular_file(path);
+    const auto is_file_exist = std::filesystem::exists(path);
+
+    if (!is_regular_file || !is_file_exist)
+    {
+      return;
+    }
+
+    std::ifstream file(path, std::ios::binary);
+    std::stringstream buf;
+    buf << file.rdbuf();
+    file.close();
+
+    http::stream::buffer stream_buf;
+    for (const auto &c : buf.str())
+    {
+      stream_buf.push_back(c);
+    }
+
+    this->with_body(&stream_buf);
   }
 } // namespace http

@@ -1,45 +1,61 @@
 #pragma once
 
-#include <cstdint>
-#include <memory>
 #include <string>
-#include <vector>
+
+#include "response_interface.h++"
 
 namespace http
 {
-  class response
+  class response final : public response_interface
   {
+  public:
     static constexpr const char *CRLF = "\r\n";
-    static constexpr const char *PROTO = "HTTP/1.1";
+    constexpr static const char *PROTO_PREFIX = "HTTP/";
+    constexpr static const char *PROTO_DEFAULT = "HTTP/1.1";
 
   public:
-    response(const uint16_t code = 200, const std::string &code_msg = "OK");
+    response(int code, const char *reason);
 
     ~response();
 
-    auto add_header(const char *key, const char *val) -> void;
+    auto get_status_code() -> int override;
 
-    auto add_common_headers() -> void;
+    auto with_status(int code, const char *reason = "") -> response * override;
 
-    auto get_headers() -> const std::string & { return this->headers_; }
+    auto get_reason_phrase() -> const char * override { return reason_; }
 
-    auto append_body(std::vector<char> *buf) -> void;
+    auto get_proto_ver() -> const char * override { return proto_v_.c_str(); }
 
-    auto append_body(const char *buf, int size) -> void;
+    /**
+     * Version without prefix (HTTP/)
+     */
+    auto with_proto_ver(const char *ver) -> void override;
 
-    auto get_body() -> std::string { return std::string(this->body_.data()); }
+    auto get_headers() -> key_value override { return headers_; }
 
-    auto get_message() -> const std::string &;
+    auto has_header(const char *key) -> bool override;
 
-    auto static server_error(const std::string &msg = "Server Error") -> std::unique_ptr<response>;
+    auto with_header(const char *key, const char *val) -> void override;
 
-    auto static not_found(const std::string &msg = "Not Found") -> std::unique_ptr<response>;
+    auto with_added_header(const char *key, const char *val) -> void override;
+
+    auto get_header(const char *key) -> header * override;
+
+    auto get_body() -> stream_interface::buffer override;
+
+    auto with_body(stream_interface::buffer body) -> void override;
+    auto with_body(stream_interface::buffer *body) -> void override;
+
+    auto get_message() -> const char * override;
+
+  public:
+    auto with_view(const char *p) -> void;
 
   private:
-    uint16_t code_ = 500;
-    std::string code_msg_;
-    std::vector<char> body_;
+    int code_;
     std::string msg_;
-    std::string headers_;
+    key_value headers_;
+    const char *reason_;
+    std::string proto_v_;
   };
 } // namespace http

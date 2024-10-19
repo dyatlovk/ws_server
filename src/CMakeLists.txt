@@ -13,6 +13,7 @@ file(GLOB SRV_SOURCES
     io/sockets/local_socket.c++
     http/parser.c++
     http/uri.c++
+    http/stream.c++
     http/response.c++
     utils/thread_pool.c++
 )

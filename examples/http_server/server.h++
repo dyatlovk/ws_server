@@ -1,13 +1,10 @@
 #pragma once
 
-#include <functional>
-#include <http/mime.h++>
 #include <http/request.h++>
 #include <http/response.h++>
 #include <io/epoll/epoll.h++>
 #include <io/sockets/inet_socket.h++>
 #include <utils/thread_pool.h++>
-#include <vector>
 
 namespace examples
 {
@@ -24,7 +21,7 @@ namespace examples
     using router_func = std::function<http::response(http::request *)>;
 
   public:
-    static constexpr const char *NAME = "Robco Server";
+    constexpr static const char *NAME_DEFAULT = "BlackMesa";
 
   public:
     server(const char *host = HOST_DEFAULT, int port = PORT_DEFAULT);
@@ -39,9 +36,9 @@ namespace examples
 
     auto get_static_dir() -> const std::string { return this->static_dir_; }
 
-    auto read_path(const std::string &p) -> const std::string;
-
     auto shutdown() -> void;
+
+    auto is_file_exist(const std::string &p) -> bool;
 
   private:
     int port_;
