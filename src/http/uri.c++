@@ -35,7 +35,7 @@ namespace http
   {
     auto input_ = ws_stl::trim_string(raw);
 
-    uint16_t current = 0;
+    size_t current = 0;
     if (!is_alpha(input_[current])) return 0;
     ++current;
 
@@ -48,7 +48,7 @@ namespace http
 
     uri_.scheme = scheme;
 
-    return current;
+    return static_cast<uint8_t>(current);
   }
 
   auto uri::parse_hier(const std::string &input) -> const uint8_t
@@ -90,7 +90,7 @@ namespace http
   auto uri::parse_query(const std::string &input) -> const uint8_t
   {
     // ?key=value&test=1#index
-    uint8_t cursor = 0;
+    size_t cursor = 0;
     if (input[cursor] != question) return 0;
     ++cursor;
 
@@ -110,13 +110,13 @@ namespace http
 
     uri_.query = q;
 
-    return cursor;
+    return static_cast<uint8_t>(cursor);
   }
 
   auto uri::parse_fragment(const std::string &input) -> const uint8_t
   {
     // #index
-    uint8_t cursor = 0;
+    size_t cursor = 0;
     if (input[cursor] != number_sign) return 0;
     ++cursor;
 
@@ -137,7 +137,7 @@ namespace http
 
     uri_.fragment = f;
 
-    return cursor;
+    return static_cast<uint8_t>(cursor);
   }
 
   auto uri::parse_host(const std::string &input) -> const uint8_t
@@ -155,7 +155,7 @@ namespace http
   auto uri::parse_regname(const std::string &input) -> const uint8_t
   {
     // host.com:443/path
-    uint8_t cursor = 0;
+    size_t cursor = 0;
     for (; cursor < input.size(); ++cursor)
     {
       if (input[cursor] == slash) break;
@@ -175,13 +175,13 @@ namespace http
 
     uri_.host = host;
 
-    return cursor;
+    return static_cast<uint8_t>(cursor);
   }
 
   auto uri::parse_port(const std::string &input) -> const uint8_t
   {
     // 443/path
-    uint8_t cursor = 0;
+    size_t cursor = 0;
     bool is_valid = false;
     for (; cursor < input.size(); ++cursor)
     {
@@ -192,13 +192,13 @@ namespace http
     if (!is_valid)
     {
       uri_.port = 0;
-      return cursor;
+      return static_cast<uint8_t>(cursor);
     }
 
     if (cursor == 0)
     {
       uri_.port = 0;
-      return cursor;
+      return static_cast<uint8_t>(cursor);
     }
 
 
@@ -218,7 +218,7 @@ namespace http
 
     uri_.port = port;
 
-    return cursor;
+    return static_cast<uint8_t>(cursor);
   }
 
   auto uri::parse_path(const std::string &input) -> const uint8_t
@@ -226,7 +226,7 @@ namespace http
     if (input.empty()) return 0;
 
     // /path
-    uint8_t cursor = 0;
+    size_t cursor = 0;
     if (input[cursor] != slash) return 0;
     ++cursor;
 
@@ -241,7 +241,7 @@ namespace http
     auto path = input.substr(0, cursor);
     uri_.path = path;
 
-    return cursor;
+    return static_cast<uint8_t>(cursor);
   }
 
   auto uri::is_alpha(const char &view) -> const bool
