@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stl/string/ws_string.h++>
-#include <string>
+#include <vector>
 
 namespace http
 {
@@ -19,12 +19,15 @@ namespace http
       Connect,
     };
 
+    using params_map = std::vector<std::string>;
+
   public:
     struct http_request
     {
       methods method;
       std::string uri;
       float http_ver;
+      params_map params;
     } http_req_;
 
     request()
@@ -32,7 +35,11 @@ namespace http
     {
     }
 
-    ~request() { input_.clear(); }
+    ~request()
+    {
+      input_.clear();
+      http_req_.params.clear();
+    }
 
     inline auto parse(const std::string &input) -> const http_request *
     {

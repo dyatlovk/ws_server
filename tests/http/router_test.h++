@@ -35,13 +35,53 @@ namespace tests::http::router
 
         });
     const auto match_get = router.match("/get");
-    ASSERT_TRUE(match_get, "get matched");
+    ASSERT_TRUE(match_get, "get");
 
     const auto match_post = router.match("/post");
-    ASSERT_TRUE(match_post, "post matched");
+    ASSERT_TRUE(match_post, "post");
 
-    const auto empty = router.match("not_found");
-    ASSERT_FALSE(empty, "empty");
+    const auto is_exist = router.match("not_found");
+    ASSERT_FALSE(is_exist, "empty");
+  });
+
+  TEST_CASE(match_params, {
+    ::http::router router;
+    router.add("/", method::Get,
+        [](request *req, response *res) {
+
+        });
+
+    router.add("/blog/\\w+", method::Get,
+        [](request *req, response *res) {
+
+        });
+
+    router.add("/blog/articles/\\d+", method::Get,
+        [](request *req, response *res) {
+
+        });
+    router.add("/news/\\D+", method::Get,
+        [](request *req, response *res) {
+
+        });
+
+    router.add("/news/\\D+/\\d+", method::Get,
+        [](request *req, response *res) {
+
+        });
+
+    ASSERT_TRUE(router.match("/") != nullptr, "/ matched");
+    ASSERT_TRUE(router.match("/word") == nullptr, "/word not matched");
+    ASSERT_TRUE(router.match("/1") == nullptr, "/1 not_matched");
+    ASSERT_TRUE(router.match("/1/2") == nullptr, "/1/2 not_matched");
+    ASSERT_TRUE(router.match("/blog/articles/1") != nullptr, "/blog/articles/1 matched");
+    ASSERT_TRUE(router.match("/blog/articles/not_found") == nullptr, "/blog/articles/not_found not_matched");
+    ASSERT_TRUE(router.match("/blog") == nullptr, "/blog not_matched");
+    ASSERT_TRUE(router.match("/blog/1") != nullptr, "/blog/1 matched");
+    ASSERT_TRUE(router.match("/news/1") == nullptr, "/news/1 not matched");
+    ASSERT_TRUE(router.match("/news/slug") != nullptr, "/news/slug matched");
+    ASSERT_TRUE(router.match("/news/long-slug/1") != nullptr, "/news/long-slug/1 matched");
+    ASSERT_TRUE(router.match("/news/long-slug/1/fragment") == nullptr, "/news/long-slug/1/fragment not matched");
   });
 
   TEST_CASE(unique_endpoint, {
@@ -68,5 +108,6 @@ namespace tests::http::router
     add();
     match();
     unique_endpoint();
+    match_params();
   }
 } // namespace tests::http::router

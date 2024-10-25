@@ -10,9 +10,12 @@ namespace http
   class router
   {
   private:
+    using str = std::string;
     using req = http::request;
     using res = http::response;
+    using tokens_map = std::vector<str>;
     using methods_map = std::vector<req::methods>;
+    using params_map = std::vector<str>;
 
   public:
     struct route;
@@ -31,7 +34,7 @@ namespace http
     auto add(const char *url, req::methods method, handlers &&handler) -> void;
     auto add(const char *url, methods_map methods, handlers &&handler) -> void;
 
-    auto match(const char *url) -> route *;
+    auto find(const char *url) -> route *;
 
     auto is_method_allowed(const route *route, const req::methods method) -> bool;
 
@@ -39,12 +42,22 @@ namespace http
 
     auto get_routers() -> map { return this->routes_; }
 
+    auto match(const char *url) -> route *;
+
+    auto reset() -> void;
+
+    auto shutdown() -> void;
+
+  private:
+    auto get_tokens(const str &path) -> tokens_map;
+
   public:
     struct route
     {
       const char *url;
       handlers handler;
       methods_map methods;
+      params_map params;
     };
 
   private:

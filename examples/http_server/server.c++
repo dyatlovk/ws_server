@@ -69,6 +69,7 @@ namespace examples
             auto msg = res.get_message();
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
+            router_.reset();
             return;
           };
 
@@ -87,6 +88,7 @@ namespace examples
               auto msg = res.get_message();
               srv_->write(socket, msg, std::strlen(msg));
               epoll_->unwatch(socket);
+              router_.reset();
               return;
             }
           }
@@ -102,6 +104,7 @@ namespace examples
             auto msg = res.get_message();
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
+            router_.reset();
             return;
           };
 
@@ -115,14 +118,17 @@ namespace examples
             auto msg = res.get_message();
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
+            router_.reset();
             return;
           }
 
           http::response response{200, "OK"};
+          req.http_req_.params = router->params;
           router->handler(&req, &response);
           auto msg = response.get_message();
           srv_->write(socket, msg, std::strlen(msg));
           epoll_->unwatch(socket);
+          router_.reset();
         });
 
     epoll_->on_close([](int socket) { fmt::println("client closed {}", socket); });
