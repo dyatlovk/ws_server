@@ -28,14 +28,16 @@
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "SRV_BUILD_TESTS": true
+                "SRV_BUILD_TESTS": true,
+                "SRV_BUILD_BENCHMARKS": false
             }
         },
         {
             "name": "makefile-x86_64-linux-release",
             "displayName": "x64 Release",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "MinSizeRel"
+                "CMAKE_BUILD_TYPE": "MinSizeRel",
+                "SRV_BUILD_BENCHMARKS": true
             },
             "inherits": "makefile-x86_64-linux-debug"
         }

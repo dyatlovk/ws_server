@@ -21,6 +21,10 @@ if(SRV_BUILD_TESTS)
     add_subdirectory(libs/args/tests)
 endif()
 
+if(SRV_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
+
 #examples
 option(SRV_BUILD_EXAMPLES "Build examples" OFF)
 if(SRV_BUILD_EXAMPLES)
