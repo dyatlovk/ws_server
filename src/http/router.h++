@@ -49,7 +49,7 @@ namespace http
     auto shutdown() -> void;
 
   private:
-    auto get_tokens(const str &path) -> tokens_map;
+    auto get_tokens(const char *path) -> tokens_map;
 
   public:
     struct route

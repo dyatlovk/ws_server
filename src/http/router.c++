@@ -1,7 +1,7 @@
 #include "router.h++"
 
 #include <cstring>
-#include <regex>
+#include <reflex/stdmatcher.h>
 
 namespace http
 {
@@ -87,24 +87,23 @@ namespace http
     map candidates;
     for (const auto &route : routes_)
     {
-      // full complaring
+      // full comparing
       if (std::strcmp(route->url, url) == 0)
       {
         return route;
       }
 
       // comparing with regex
-      std::string s(url);
-      std::smatch m;
-      std::regex exp(route->url);
-      const auto tokens_original = this->get_tokens(url);
-      const auto tokens_router = this->get_tokens(route->url);
-      if (tokens_original.size() != tokens_router.size()) continue;
+      {
+        const auto tokens_original = this->get_tokens(url);
+        const auto tokens_router = this->get_tokens(route->url);
+        if (tokens_original.size() != tokens_router.size()) continue;
+      }
 
-      while (std::regex_search(s, m, exp))
+      reflex::StdMatcher matcher(route->url, url);
+      for (auto &match : matcher.find)
       {
         candidates.push_back(route);
-        s = m.suffix().str();
       }
     }
 
@@ -131,16 +130,13 @@ namespace http
     return nullptr;
   }
 
-  auto router::get_tokens(const str &path) -> tokens_map
+  auto router::get_tokens(const char *path) -> tokens_map
   {
     tokens_map map;
-    std::string s(path);
-    std::smatch m;
-    std::regex exp(R"([^/]+)", std::regex_constants::ECMAScript);
-    while (std::regex_search(s, m, exp))
+    reflex::StdMatcher matcher("[^\\/]+", path);
+    for (auto &match : matcher.find)
     {
-      map.push_back(m[0]);
-      s = m.suffix().str();
+      map.push_back(match.text());
     }
     return map;
   }

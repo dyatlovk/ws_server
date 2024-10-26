@@ -4,7 +4,7 @@
 #include <http/router.h++>
 #include <iostream>
 #include <ostream>
-#include <random>
+#include <ratio>
 #include <string>
 #include <utils/thread_pool.h++>
 #include <vector>
@@ -63,9 +63,6 @@ int main()
 
   std::vector<std::string> urls = {
       "/catalog/women/item/34", "/", "/articles/entry", "/not-found", "/blog/regex", "/1/2/3/4"};
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(urls.begin(), urls.end(), g);
 
   const auto longest_url = find_longest_url_size(&urls);
 
@@ -105,7 +102,7 @@ int main()
             router.match(url.c_str());
           }
           auto stop = std::chrono::high_resolution_clock::now();
-          double elapsed_time_ms = std::chrono::duration<double, std::milli>(stop - start).count();
+          double elapsed_micro = std::chrono::duration<double, std::micro>(stop - start).count();
           std::stringstream ss;
           ss << url;
           for (int i = 0; i < longest_url + 3 - url.size(); ++i)
@@ -114,7 +111,7 @@ int main()
             ss << ".";
           }
 
-          ss << requests / elapsed_time_ms << " req/ms";
+          ss << elapsed_micro / requests << " μs/req ";
           ss << " [" << getValue() << " Kb]";
 
           std::cout << ss.rdbuf() << std::endl;

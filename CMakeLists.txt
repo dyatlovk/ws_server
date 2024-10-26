@@ -10,6 +10,10 @@ set(VENDORS ${PROJECT_SOURCE_DIR}/vendor)
 set(FMT_INCLUDE ${VENDORS}/fmt/include)
 set(FMTLIB "${VENDORS}/fmt/linux/libfmt.a")
 
+# Reflex lib
+set(REFLEX_INCLUDE ${VENDORS}/reflex/include)
+set(REFLEX "${VENDORS}/reflex/libreflex_static_lib.a")
+
 add_subdirectory(libs/args)
 add_subdirectory(src)
 
