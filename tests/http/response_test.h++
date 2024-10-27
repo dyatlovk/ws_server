@@ -75,7 +75,10 @@ namespace tests::http::response
   TEST_CASE(with_body, {
     ::http::response res{200, "OK"};
     res.with_body({'b', 'o', 'd', 'y'});
-    ASSERT_EQ_CHAR(res.get_body().data(), "body", "body ok");
+    ASSERT_EQ_CHAR(res.get_body().data(), "body", "body bytes");
+
+    res.with_body("body_string");
+    ASSERT_EQ_CHAR(res.get_body().data(), "body_string", "body string");
   });
 
   auto run() -> void

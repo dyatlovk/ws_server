@@ -58,8 +58,9 @@ namespace http
     /**
      * Return an instance with the specified message body.
      */
-    virtual auto with_body(stream_interface::buffer body) -> void = 0;
-    virtual auto with_body(stream_interface::buffer *body) -> void = 0;
+    virtual auto with_body(const stream_interface::buffer body) -> void = 0;
+    virtual auto with_body(const stream_interface::buffer *body) -> void = 0;
+    virtual auto with_body(const char *body) -> void = 0;
 
   public:
     struct header

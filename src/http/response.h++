@@ -44,8 +44,9 @@ namespace http
 
     auto get_body() -> stream_interface::buffer override;
 
-    auto with_body(stream_interface::buffer body) -> void override;
-    auto with_body(stream_interface::buffer *body) -> void override;
+    auto with_body(const stream_interface::buffer body) -> void override;
+    auto with_body(const stream_interface::buffer *body) -> void override;
+    auto with_body(const char *data) -> void override;
 
     auto get_message() -> const char * override;
 

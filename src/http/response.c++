@@ -103,12 +103,12 @@ namespace http
     return nullptr;
   }
 
-  auto response::with_body(stream_interface::buffer body) -> void
+  auto response::with_body(const stream_interface::buffer body) -> void
   {
     stream_.write_bytes(body);
   }
 
-  auto response::with_body(stream_interface::buffer *body) -> void
+  auto response::with_body(const stream_interface::buffer *body) -> void
   {
     stream_.write_bytes(body);
   }
@@ -190,6 +190,20 @@ namespace http
     for (const auto &c : str)
     {
       body.push_back(c);
+    }
+    this->with_body(body);
+  }
+
+  auto response::with_body(const char *data) -> void
+  {
+    auto size = std::strlen(data);
+    std::vector<char> body{};
+
+    int i = 0;
+    while (i < size)
+    {
+      body.push_back(data[i]);
+      ++i;
     }
     this->with_body(body);
   }
