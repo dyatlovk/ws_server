@@ -50,7 +50,7 @@ namespace examples
       shutdown();
       return;
     }
-    epoll_->on_connection([](int sock) { fmt::println("new connection {}", sock); });
+    epoll_->on_connection([](int sock) {});
 
     epoll_->on_write(
         [this](int socket, const char *buf)
@@ -70,6 +70,7 @@ namespace examples
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
             router_.reset();
+            this->log(&req, 500);
             return;
           };
 
@@ -89,6 +90,7 @@ namespace examples
               srv_->write(socket, msg, std::strlen(msg));
               epoll_->unwatch(socket);
               router_.reset();
+              this->log(&req, 200);
               return;
             }
           }
@@ -105,6 +107,7 @@ namespace examples
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
             router_.reset();
+            this->log(&req, 404);
             return;
           };
 
@@ -119,6 +122,7 @@ namespace examples
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
             router_.reset();
+            this->log(&req, 405);
             return;
           }
 
@@ -129,6 +133,7 @@ namespace examples
           srv_->write(socket, msg, std::strlen(msg));
           epoll_->unwatch(socket);
           router_.reset();
+          this->log(&req, 200);
         });
 
     epoll_->on_close([](int socket) { fmt::println("client closed {}", socket); });
@@ -174,5 +179,12 @@ namespace examples
     const std::string path = static_dir_ + p;
 
     return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
+  }
+
+  auto server::log(const req *req, const int code) -> void
+  {
+    if (!req) return;
+    fmt::println("{method} {code} {uri}", fmt::arg("method", req::method_string(req->http_req_.method)),
+        fmt::arg("uri", req->http_req_.uri), fmt::arg("code", code));
   }
 } // namespace examples

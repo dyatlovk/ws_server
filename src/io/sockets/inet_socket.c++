@@ -1,7 +1,6 @@
 #include "inet_socket.h++"
 
 #include <cstring>
-#include <fmt/core.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -22,7 +21,6 @@ namespace io
   inet_socket::~inet_socket()
   {
     close();
-    fmt::println("[Sock] [{}] free", fd);
   }
 
   auto inet_socket::open() -> bool
@@ -42,8 +40,6 @@ namespace io
 
     state_ = states::opened;
 
-    fmt::println("[Sock] [{}(inet)] opened [OK]", fd);
-
     return true;
   }
 
@@ -61,8 +57,6 @@ namespace io
 
     state_ = states::binded;
 
-    fmt::println("[Sock] [{}] binded [OK]", fd);
-
     return true;
   }
 
@@ -77,7 +71,6 @@ namespace io
     }
 
     state_ = states::listen;
-    fmt::println("[Sock] [{}] listen [OK]", fd);
 
     return true;
   }
@@ -86,7 +79,6 @@ namespace io
   {
     ::close(fd);
     state_ = states::closed;
-    fmt::println("[Sock] [{}] closed", fd);
   }
 
   auto inet_socket::accept() -> int
@@ -131,11 +123,8 @@ namespace io
         return false;
       }
       close();
-      fmt::println("error on send data");
       return false;
     }
-
-    fmt::println("[Sock]: writed {} b to fd#{}", r, conn);
 
     return true;
   }

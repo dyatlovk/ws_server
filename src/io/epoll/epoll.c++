@@ -1,8 +1,9 @@
 #include "epoll.h++"
 
 #include <arpa/inet.h>
+#include <cstring>
 #include <fcntl.h>
-#include <fmt/core.h>
+#include <stdexcept>
 #include <unistd.h>
 
 namespace io
@@ -17,16 +18,12 @@ namespace io
     evlist.events = 0;
   }
 
-  epoll::~epoll()
-  {
-    fmt::println("[Epoll] [{fd}] destructed [OK]", fmt::arg("fd", fd));
-  }
+  epoll::~epoll() {}
 
   auto epoll::create() -> void
   {
     fd = epoll_create(maxEvents);
     if (fd == -1) throw std::runtime_error("[Epoll] create error");
-    fmt::println("[Epoll] [{fd}] create [OK]", fmt::arg("fd", fd));
   }
 
   auto epoll::wait() -> void
@@ -56,7 +53,6 @@ namespace io
       {
         if (events & EPOLLET | Events::WRITE)
         {
-          fmt::println("[Epoll] write #{}", sock);
           peer_read(sock);
         }
 
@@ -84,11 +80,9 @@ namespace io
     }
     catch (std::runtime_error &e)
     {
-      fmt::println("[Epoll] shutdown error {}", e.what());
     }
     close(fd);
     close(masterSocket);
-    fmt::println("[Epoll] shutdown [OK]", fmt::arg("fd", fd));
   }
 
   auto epoll::watch(const int socket, const uint32_t e) -> void
@@ -98,8 +92,6 @@ namespace io
     if (add(socket, e) == -1) std::runtime_error("[Epoll] add error");
 
     watched_.insert(socket);
-    fmt::println("[Epoll] register client socket: {} [OK]", socket);
-    fmt::println("[Epoll] [{fd}] ({cl}) clients observing", fmt::arg("fd", fd), fmt::arg("cl", watched_size()));
   }
 
   auto epoll::register_master(const int socket, const uint32_t e) -> void
@@ -107,7 +99,6 @@ namespace io
     if (masterSocket > 0) return;
     masterSocket = socket;
     if (add(socket, e) == -1) throw std::runtime_error("[Epoll] error register master socket");
-    fmt::println("[Epoll] register master socket: {} [OK]", socket);
   }
 
   auto epoll::unwatch(const int socket) -> void
@@ -117,8 +108,6 @@ namespace io
 
     watched_.erase(socket);
     close(socket);
-
-    fmt::println("[Epoll] [{fd}] unregister socket [OK]", fmt::arg("fd", socket));
   }
 
   auto epoll::unwatch_all() -> void
@@ -131,12 +120,9 @@ namespace io
       }
       catch (std::runtime_error &e)
       {
-        fmt::println("runtime error unwatch_all");
         throw std::runtime_error(e);
       }
     }
-
-    fmt::println("[Epoll] [{fd}] ({cl}) clients observing", fmt::arg("fd", fd), fmt::arg("cl", watched_size()));
   }
 
   auto epoll::peer_accept() -> int

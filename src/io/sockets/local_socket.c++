@@ -1,6 +1,5 @@
 #include "local_socket.h++"
 
-#include <fmt/core.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -17,7 +16,6 @@ namespace io
   local_socket::~local_socket()
   {
     close();
-    fmt::println("[Sock] [{}] free", fd);
   }
 
   auto local_socket::open() -> bool
@@ -41,8 +39,6 @@ namespace io
 
     state_ = states::opened;
 
-    fmt::println("[Sock] [{}(unix)] opened OK", fd);
-
     return true;
   }
 
@@ -60,8 +56,6 @@ namespace io
 
     state_ = states::binded;
 
-    fmt::println("[Sock] [{}] binded [OK]", fd);
-
     return true;
   }
 
@@ -76,7 +70,6 @@ namespace io
     }
 
     state_ = states::listen;
-    fmt::println("[Sock] [{}] listen [OK]", fd);
 
     return true;
   }
@@ -86,7 +79,6 @@ namespace io
     ::close(fd);
     remove(path_);
     state_ = states::closed;
-    fmt::println("[Sock] [{}] closed", fd);
   }
 
   auto local_socket::accept() -> int

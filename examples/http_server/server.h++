@@ -39,6 +39,9 @@ namespace examples
     auto with_routers(const router *r) -> void { this->router_ = *r; }
 
   private:
+    auto log(const req *req, const int code) -> void;
+
+  private:
     int port_;
     const char *host_;
 
