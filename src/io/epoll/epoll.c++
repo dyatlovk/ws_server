@@ -56,7 +56,7 @@ namespace io
           peer_read(sock);
         }
 
-        if (events & Events::CLOSE)
+        if (events == Events::CLOSE)
         {
           try
           {
@@ -149,9 +149,12 @@ namespace io
       readBuf.append(buf);
     }
 
-    if (on_write_) on_write_(peer, readBuf.c_str());
+    if (readBuf.empty()) return "";
 
-    return readBuf.c_str();
+    const auto b = readBuf.c_str();
+    if (on_write_) on_write_(peer, b);
+
+    return b;
   }
 
   auto epoll::add(const int socket, const uint32_t e) -> int
