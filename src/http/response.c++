@@ -181,4 +181,16 @@ namespace http
     with_status(code, phrase);
     with_added_header("Location", location);
   }
+
+  auto response::with_json(const miniJson::Json *data) -> void
+  {
+    const auto str = data->serialize();
+
+    std::vector<char> body{};
+    for (const auto &c : str)
+    {
+      body.push_back(c);
+    }
+    this->with_body(body);
+  }
 } // namespace http

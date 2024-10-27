@@ -28,5 +28,5 @@ endif()
 
 add_library(${PROJECT_NAME} STATIC ${SRV_SOURCES})
 add_library(server:core ALIAS ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${SRV_INCLUDE} ${FMT_INCLUDE} ${REFLEX_INCLUDE})
-target_link_libraries(${PROJECT_NAME} ${FMTLIB} ${REFLEX})
+target_include_directories(${PROJECT_NAME} PUBLIC ${SRV_INCLUDE} ${FMT_INCLUDE} ${REFLEX_INCLUDE} ${MINJSON_INCLUDE})
+target_link_libraries(${PROJECT_NAME} ${FMTLIB} ${REFLEX} ${MINJSON})

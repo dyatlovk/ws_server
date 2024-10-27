@@ -1,7 +1,6 @@
 #include <http/request.h++>
 #include <http/response.h++>
 #include <http/router.h++>
-#include <minijson/json.h>
 #include <vector>
 
 #include "server.h++"
@@ -61,14 +60,7 @@ int main(int argc, char *argv[])
             {"key2", false},
             {"key3", miniJson::Json::_array{1, 2, 3}},
         };
-        auto str = json.serialize();
-
-        std::vector<char> body{};
-        for (const auto &c : str)
-        {
-          body.push_back(c);
-        }
-        res->with_body(body);
+        res->with_json(&json);
       });
 
   router.add("/params/\\D+", method::Get,
