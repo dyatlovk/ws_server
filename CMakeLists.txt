@@ -14,6 +14,10 @@ set(FMTLIB "${VENDORS}/fmt/linux/libfmt.a")
 set(REFLEX_INCLUDE ${VENDORS}/reflex/include)
 set(REFLEX "${VENDORS}/reflex/libreflex_static_lib.a")
 
+# MiniJson lib
+set(MINJSON_INCLUDE ${VENDORS}/minijson/include)
+set(MINJSON "${VENDORS}/minijson/libJson.a")
+
 add_subdirectory(libs/args)
 add_subdirectory(src)
 
