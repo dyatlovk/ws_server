@@ -31,8 +31,9 @@ namespace http
      * Add handler to container.
      * Endpoint is unique. The same url with different methods will be make a different instances
      */
-    auto add(const char *url, req::methods method, handlers &&handler) -> void;
-    auto add(const char *url, methods_map methods, handlers &&handler) -> void;
+    auto add(const char *url, req::methods method, const handlers &&handler) -> void;
+    auto add(const char *url, methods_map methods, const handlers &&handler) -> void;
+    auto add(const char *url, methods_map methods, const handlers *handler) -> void;
 
     auto find(const char *url) -> route *;
 

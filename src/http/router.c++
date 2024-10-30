@@ -9,7 +9,7 @@ namespace http
 
   router::~router() = default;
 
-  auto router::add(const char *url, req::methods method, handlers &&handler) -> void
+  auto router::add(const char *url, req::methods method, const handlers &&handler) -> void
   {
     const auto found = this->find(url);
     const auto is_method_allowed = this->is_method_allowed(found, method);
@@ -22,7 +22,7 @@ namespace http
     this->routes_.push_back(router_);
   }
 
-  auto router::add(const char *url, methods_map methods, handlers &&handler) -> void
+  auto router::add(const char *url, methods_map methods, const handlers &&handler) -> void
   {
     const auto found = this->find(url);
     int matched = 0;
@@ -44,6 +44,31 @@ namespace http
     router_->url = url;
     router_->methods = methods;
     router_->handler = std::move(handler);
+    this->routes_.push_back(router_);
+  }
+
+  auto router::add(const char *url, methods_map methods, const handlers *handler) -> void
+  {
+    const auto found = this->find(url);
+    int matched = 0;
+    for (const auto &m : methods)
+    {
+      const auto is_exists = is_method_allowed(found, m);
+      if (is_exists)
+      {
+        ++matched;
+      }
+    }
+
+    if (matched == methods.size())
+    {
+      return;
+    }
+
+    route *router_ = new route;
+    router_->url = url;
+    router_->methods = methods;
+    router_->handler = std::move(*handler);
     this->routes_.push_back(router_);
   }
 
