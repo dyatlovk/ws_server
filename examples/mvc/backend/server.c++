@@ -12,6 +12,7 @@
 
 namespace examples
 {
+  using json = miniJson::Json;
   std::atomic<bool> server_running = false;
   typedef ::io::inet_socket sock;
 
@@ -101,8 +102,9 @@ namespace examples
           {
             http::response res{404, "Not Found"};
             res.with_added_header("Server", ::examples::server::NAME_DEFAULT);
-            res.with_added_header("Content-Type", "text/html;charset=utf-8");
-            res.with_view("/404.html");
+            res.with_added_header("Content-Type", "application/json;charset=utf-8");
+            json j = miniJson::Json::_object{{"error", "404"}};
+            res.with_json(&j);
             auto msg = res.get_message();
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);
@@ -115,9 +117,10 @@ namespace examples
           if (!is_method_allowed)
           {
             http::response res{405, "Not Allowed"};
-            res.with_added_header("Content-Type", "text/html;charset=utf-8");
+            res.with_added_header("Content-Type", "application/json;charset=utf-8");
             res.with_added_header("Server", ::examples::server::NAME_DEFAULT);
-            res.with_view("/405.html");
+            json j = miniJson::Json::_object{{"error", "405"}};
+            res.with_json(&j);
             auto msg = res.get_message();
             srv_->write(socket, msg, std::strlen(msg));
             epoll_->unwatch(socket);

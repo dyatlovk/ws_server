@@ -9,6 +9,7 @@ namespace Controllers
 {
   class Blog
   {
+    using json = miniJson::Json;
     using request = http::request;
     using response = ::http::response;
 
@@ -32,20 +33,26 @@ namespace Controllers
 
     inline auto entry(request *req, response *res) -> response
     {
+      res->with_added_header("Server", "Server Name");
+      res->with_added_header("Content-Type", "application/json;charset=utf-8");
+
       auto params = req->http_req_.params;
       if (params.empty())
       {
-        res->with_status(404);
+        res->with_status(404, "Not Found");
+        json j = miniJson::Json::_object{{"error", "404"}};
+        res->with_json(&j);
         return *res;
       }
 
       const int id = atoi(params[0].c_str());
-      res->with_added_header("Server", "Server Name");
-      res->with_added_header("Content-Type", "application/json;charset=utf-8");
       auto article = this->model->find_one(id);
       if (article.size() <= 0)
       {
         res->with_status(404, "Not Found");
+        json j = miniJson::Json::_object{{"error", "404"}};
+        res->with_json(&j);
+        return *res;
       }
       res->with_json(&article);
       return *res;
