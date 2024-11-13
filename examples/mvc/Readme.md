@@ -1,7 +1,7 @@
 # MVC Example
 
 ## Backend setup
-Make sure you've builded server core library.
+Make sure you've [builded server](/README.md) core library.
 
 **Example config for NGINX. (Dev mode)**
 In this case I use my test domain (srv.local). Of course,
