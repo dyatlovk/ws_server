@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
       {
         res->with_added_header("Server", ::examples::server::NAME_DEFAULT);
         res->with_added_header("Content-Type", "text/html;charset=utf-8");
-        if (req->http_req_.method == method::Post)
+        if (req->req.method == method::Post)
         {
           res->with_redirect("/about");
           return;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
       {
         res->with_added_header("Server", ::examples::server::NAME_DEFAULT);
         res->with_added_header("Content-Type", "text/html;charset=utf-8");
-        const auto params = req->http_req_.params;
+        const auto params = req->req.params;
         std::vector<char> body{};
         for (const auto &c : params)
         {

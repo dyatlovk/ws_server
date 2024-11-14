@@ -30,7 +30,7 @@ namespace Controllers
       res->with_added_header("Server", "Server Name");
       res->with_added_header("Content-Type", "text/html;charset=utf-8");
       res->with_view("/about.html");
-      const auto params = req->http_req_.params;
+      const auto params = req->req.params;
       for (const auto &c : params)
       {
         fmt::println("{}", c);

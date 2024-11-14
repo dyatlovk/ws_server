@@ -36,7 +36,7 @@ namespace Controllers
       res->with_added_header("Server", "Server Name");
       res->with_added_header("Content-Type", "application/json;charset=utf-8");
 
-      auto params = req->http_req_.params;
+      auto params = req->req.params;
       if (params.empty())
       {
         res->with_status(404, "Not Found");

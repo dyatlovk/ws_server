@@ -28,7 +28,7 @@ namespace http
       std::string uri;
       float http_ver;
       params_map params;
-    } http_req_;
+    } req;
 
     request()
         : input_("")
@@ -38,7 +38,7 @@ namespace http
     ~request()
     {
       input_.clear();
-      http_req_.params.clear();
+      req.params.clear();
     }
 
     inline auto parse(const std::string &input) -> const http_request *
@@ -73,13 +73,13 @@ namespace http
         }
       }
 
-      http_req_.method = get_method(meth);
-      http_req_.uri = get_uri(uri);
-      http_req_.http_ver = get_version(version_raw);
+      req.method = get_method(meth);
+      req.uri = get_uri(uri);
+      req.http_ver = get_version(version_raw);
 
-      if (!validate_request(&http_req_)) return nullptr;
+      if (!validate_request(&req)) return nullptr;
 
-      return &http_req_;
+      return &req;
     }
 
     inline static auto validate_request(const http_request *req) -> bool

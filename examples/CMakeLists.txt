@@ -7,3 +7,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 add_subdirectory(http_server)
 add_subdirectory(mvc)
+add_subdirectory(basic)

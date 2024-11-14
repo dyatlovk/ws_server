@@ -127,7 +127,7 @@ namespace examples
           }
 
           http::response response{200, "OK"};
-          req.http_req_.params = router->params;
+          req.req.params = router->params;
           router->handler(&req, &response);
           auto msg = response.get_message();
           srv_->write(socket, msg, std::strlen(msg));
@@ -184,7 +184,7 @@ namespace examples
   auto server::log(const req *req, const int code) -> void
   {
     if (!req) return;
-    fmt::println("{method} {code} {uri}", fmt::arg("method", req::method_string(req->http_req_.method)),
-        fmt::arg("uri", req->http_req_.uri), fmt::arg("code", code));
+    fmt::println("{method} {code} {uri}", fmt::arg("method", req::method_string(req->req.method)),
+        fmt::arg("uri", req->req.uri), fmt::arg("code", code));
   }
 } // namespace examples
