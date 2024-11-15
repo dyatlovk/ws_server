@@ -3,6 +3,7 @@
 #include "../middleware_interface.h++"
 #include "../response_interface.h++"
 #include "../router.h++"
+#include "../stream.h++"
 
 namespace http::middlewares
 {
@@ -21,7 +22,10 @@ namespace http::middlewares
   private:
     auto is_file_exist(const char *p) -> bool;
 
+    auto load_file(const char *p) -> http::stream::buffer;
+
   private:
     http::router *router_;
+    std::string mime_;
   };
 } // namespace http::middlewares

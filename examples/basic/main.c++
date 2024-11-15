@@ -18,6 +18,7 @@ int main()
   router router;
   router.add("/", method::Get, [](const request *req, response *res) { res->with_body("index"); });
   app.with_routers(&router);
+  router.shutdown();
 
   const auto exit_code = app.listen();
   return exit_code;
