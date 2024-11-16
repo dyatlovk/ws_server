@@ -14,7 +14,7 @@ namespace http
   struct mime
   {
   public:
-    static constexpr mime_type DEFAULT = {"html", "text/html"};
+    static constexpr mime_type MIME_DEFAULT = {"html", "text/html"};
 
   public:
     mime()
@@ -51,7 +51,7 @@ namespace http
           return mime;
         }
       }
-      return DEFAULT;
+      return MIME_DEFAULT;
     }
 
   private:
