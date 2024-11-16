@@ -12,9 +12,11 @@
 
 namespace http::middlewares
 {
-  response::response()
+  response::response(const options_interface *option)
       : mime_("")
+      , options_(const_cast<options_interface *>(option))
   {
+    if (!option) return;
   }
 
   response::~response()
@@ -29,7 +31,6 @@ namespace http::middlewares
     {
       const char *phrase = "Server error";
       response.with_status(500, phrase);
-      response.with_added_header("Content-Type", "text/html;charset=utf-8");
       response.with_added_header("Content-Length", std::to_string(std::strlen(phrase)).c_str());
       response.with_body(phrase);
       return;
@@ -55,7 +56,6 @@ namespace http::middlewares
     if (!router)
     {
       response.with_status(404, "Not Found");
-      response.with_added_header("Content-Type", "text/html;charset=utf-8");
       response.with_body("Not Found");
       return;
     }
@@ -65,28 +65,27 @@ namespace http::middlewares
     if (!is_method_allowed)
     {
       response.with_status(405, "Not Allowed");
-      response.with_added_header("Content-Type", "text/html;charset=utf-8");
       return;
     }
 
     req->req.params = router->params;
-    response.with_added_header("Content-Type", "text/html;charset=utf-8");
     const auto headers = response.get_headers();
     router->handler(const_cast<http::request *>(req), static_cast<http::response *>(&response));
   }
 
   auto response::is_file_exist(const char *p) -> bool
   {
-    const auto static_dir = std::filesystem::current_path().string() + "/public";
-    const std::string path = static_dir + p;
+    std::string path(options_->get_public_dir());
+    path.append(p);
 
     return std::filesystem::exists(path) && std::filesystem::is_regular_file(path);
   }
 
   auto response::load_file(const char *p) -> http::stream::buffer
   {
-    const auto static_dir = std::filesystem::current_path().string() + "/public";
-    const std::string path = static_dir + p;
+    std::string path(options_->get_public_dir());
+    path.append(p);
+
     const auto is_regular_file = std::filesystem::is_regular_file(path);
     const auto is_file_exist = std::filesystem::exists(path);
 

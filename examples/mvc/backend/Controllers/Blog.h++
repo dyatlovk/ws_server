@@ -23,7 +23,6 @@ namespace Controllers
 
     inline auto list(request *req, response *res) -> response
     {
-      res->with_added_header("Server", "Server Name");
       res->with_added_header("Content-Type", "application/json;charset=utf-8");
       auto list = this->model->get_articles();
       res->with_json(&list);
@@ -33,7 +32,6 @@ namespace Controllers
 
     inline auto entry(request *req, response *res) -> response
     {
-      res->with_added_header("Server", "Server Name");
       res->with_added_header("Content-Type", "application/json;charset=utf-8");
 
       auto params = req->req.params;

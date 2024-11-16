@@ -3,7 +3,7 @@ project(mvc)
 
 file(REAL_PATH frontend/public ASSETS)
 
-file(GLOB SRC backend/main.c++ backend/server.c++)
+file(GLOB SRC backend/main.c++)
 
 add_executable(${PROJECT_NAME} ${SRC})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SRV_INCLUDE} ${ARGS_INCLUDES} ${FMT_INCLUDE})

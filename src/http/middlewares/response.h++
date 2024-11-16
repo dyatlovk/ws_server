@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../middleware_interface.h++"
+#include "../options_interface.h++"
 #include "../response_interface.h++"
 #include "../router.h++"
 #include "../stream.h++"
@@ -10,7 +11,7 @@ namespace http::middlewares
   class response final : public middleware
   {
   public:
-    response();
+    response(const options_interface *option);
 
     ~response();
 
@@ -25,6 +26,7 @@ namespace http::middlewares
     auto load_file(const char *p) -> http::stream::buffer;
 
   private:
+    options_interface *options_;
     http::router *router_;
     std::string mime_;
   };

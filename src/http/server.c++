@@ -1,7 +1,6 @@
 #include "server.h++"
 
 #include <csignal>
-#include <filesystem>
 #include <fmt/core.h>
 
 #include "http/middlewares/response.h++"
@@ -11,18 +10,14 @@ namespace http
 {
   server *server::instance = nullptr;
 
-  server::server(const options *options)
-      : srv_(sock::make_tcp(options->host, options->port))
-      , options_(nullptr)
-      , host_(options->host)
-      , port_(options->port)
+  server::server(options_interface *options)
+      : srv_(sock::make_tcp(options->get_host(), options->get_port()))
+      , options_(options)
       , epoll_(new io::epoll())
-      , static_dir_(std::filesystem::current_path().string() + options->public_dir)
       , router_()
       , running_(false)
   {
     this->instance = this;
-    this->options_ = const_cast<struct options *>(options);
 
     srv_->open();
     srv_->set_non_blocking();
@@ -56,7 +51,7 @@ namespace http
           http::request req;
           auto request = req.parse(req_line);
           http::response res{200, "OK"};
-          res.with_added_header("Server", options_->name);
+          res.with_added_header("Server", options_->get_name());
           for (auto &mid : middlewares_)
           {
             const auto m = static_cast<http::middlewares::response *>(mid);

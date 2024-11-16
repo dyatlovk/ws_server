@@ -5,7 +5,7 @@
 
 namespace http
 {
-  struct type
+  struct mime_type
   {
     std::string ext;
     std::string mime;
@@ -14,7 +14,7 @@ namespace http
   struct mime
   {
   public:
-    static constexpr type MIME_DEFAULT = {"html", "text/html"};
+    static constexpr mime_type DEFAULT = {"html", "text/html"};
 
   public:
     mime()
@@ -42,7 +42,7 @@ namespace http
 
     inline auto add(const std::string &ext, const std::string &mime) -> void { db_.push_back({ext, mime}); }
 
-    inline auto get_ext(const std::string &ext) -> type
+    inline auto get_ext(const std::string &ext) -> mime_type
     {
       for (const auto &mime : db_)
       {
@@ -51,11 +51,11 @@ namespace http
           return mime;
         }
       }
-      return MIME_DEFAULT;
+      return DEFAULT;
     }
 
   private:
-    std::vector<type> db_;
+    std::vector<mime_type> db_;
   };
 
 } // namespace http

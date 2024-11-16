@@ -4,6 +4,7 @@ Web server for C++.
 
 ## Examples
 
+* [Basic](./examples/basic/)
 * [Simple http](./examples/http_server/)
 * [MVC](./examples/mvc/)
 

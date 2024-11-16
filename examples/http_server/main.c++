@@ -1,4 +1,5 @@
 #include <http/middlewares/response.h++>
+#include <http/options.h++>
 #include <http/server.h++>
 #include <vector>
 
@@ -6,8 +7,6 @@ using request = http::request;
 using response = http::response;
 using method = request::methods;
 using router = http::router;
-
-auto get_options() -> http::server::options;
 
 int main(int argc, char *argv[])
 {
@@ -56,9 +55,9 @@ int main(int argc, char *argv[])
         res->with_body(body);
       });
 
-  const auto options = get_options();
+  auto options = http::options({3044, "127.0.0.1", "Black Mesa", "/public"});
   http::server app(&options);
-  http::middlewares::response response_middleware;
+  http::middlewares::response response_middleware(&options);
   app.add_middleware(&response_middleware);
   app.with_routers(&router);
   const auto exit_code = app.listen();
@@ -66,15 +65,4 @@ int main(int argc, char *argv[])
   router.shutdown();
 
   return exit_code;
-}
-
-auto get_options() -> http::server::options
-{
-  http::server::options options;
-  options.port = 3044;
-  options.host = "127.0.0.1";
-  options.name = "Black Mesa";
-  options.public_dir = "/public";
-
-  return options;
 }

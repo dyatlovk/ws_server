@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "middleware_interface.h++"
+#include "options_interface.h++"
 #include "request.h++"
 #include "response.h++"
 #include "router.h++"
@@ -14,9 +15,6 @@ namespace http
 {
   class server
   {
-  public:
-    struct options;
-
   private:
     using router = http::router;
     using request = http::request;
@@ -25,7 +23,7 @@ namespace http
     static constexpr const char *CRLF = "\r\n";
 
   public:
-    server(const options *options);
+    server(options_interface *options);
 
     ~server();
 
@@ -39,32 +37,17 @@ namespace http
 
     auto is_running() -> bool { return this->running_; };
 
-    auto get_static_dir() -> const char * { return static_dir_.c_str(); }
-
-  public:
-    struct options
-    {
-      int port;
-      const char *host;
-      const char *name;
-      const char *public_dir;
-    };
-
   private:
     auto static signal_handler(int s) -> void { instance->running_ = false; }
 
   private:
-    int port_;
-    const char *host_;
-    options *options_;
     static server *instance;
-
+    options_interface *options_;
     router router_;
 
     io::epoll *epoll_;
     io::inet_socket *srv_;
 
-    std::string static_dir_;
     utils::thread_pool thr_pool;
     std::atomic<bool> running_ = false;
     std::vector<middleware *> middlewares_;
