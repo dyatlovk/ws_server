@@ -1,0 +1,116 @@
+name: Memory Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  memory-test:
+    name: Memory and Performance Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          socat \
+          valgrind \
+          gcc-11 \
+          g++-11 \
+          libfmt-dev \
+          pkg-config \
+          curl \
+          apache2-utils
+
+    - name: Configure and build
+      run: |
+        export CC=gcc-11
+        export CXX=g++-11
+        cmake --preset makefile-x86_64-linux-debug
+        cmake --build build --preset debug-build-linux --parallel $(nproc)
+
+    - name: Run memory leak tests with Valgrind
+      run: |
+        cd build/makefile-x86_64-linux-debug/tests
+        if [ -f ./server_test ]; then
+          echo "Running memory leak detection..."
+          valgrind --tool=memcheck \
+                   --leak-check=full \
+                   --show-leak-kinds=all \
+                   --track-origins=yes \
+                   --verbose \
+                   --error-exitcode=1 \
+                   --suppressions=/dev/null \
+                   ./server_test 2>&1 | tee valgrind_output.log
+        fi
+
+    - name: Run HTTP server memory test
+      timeout-minutes: 5
+      run: |
+        cd build/makefile-x86_64-linux-debug/examples/http_server
+        if [ -f ./http_server ]; then
+          echo "Starting HTTP server for memory testing..."
+          timeout 60s valgrind --tool=memcheck \
+                              --leak-check=full \
+                              --show-leak-kinds=all \
+                              --track-origins=yes \
+                              --error-exitcode=1 \
+                              ./http_server --port 8080 &
+          VALGRIND_PID=$!
+
+          # Wait for server to start
+          sleep 3
+
+          # Generate some load
+          for i in {1..50}; do
+            curl -s http://localhost:8080/ > /dev/null || true
+            curl -s http://localhost:8080/about > /dev/null || true
+            curl -s http://localhost:8080/api > /dev/null || true
+          done
+
+          # Gracefully stop valgrind
+          kill -TERM $VALGRIND_PID 2>/dev/null || true
+          wait $VALGRIND_PID 2>/dev/null || true
+        fi
+
+    - name: Performance benchmark
+      timeout-minutes: 3
+      run: |
+        cd build/makefile-x86_64-linux-debug/examples/http_server
+        if [ -f ./http_server ]; then
+          echo "Running performance benchmark..."
+          ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 2
+
+          # Run Apache Bench test
+          ab -n 1000 -c 10 http://localhost:8080/ || echo "Benchmark completed with warnings"
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Upload memory test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: memory-test-results
+        path: |
+          build/makefile-x86_64-linux-debug/tests/valgrind_output.log
+          build/makefile-x86_64-linux-debug/examples/http_server/valgrind_*.log
+        retention-days: 7

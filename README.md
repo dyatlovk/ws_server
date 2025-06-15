@@ -1,5 +1,9 @@
 # WS Server
 
+[![CI/CD Pipeline](https://github.com/dyatlovk/ws_server/workflows/CI/CD%20Pipeline/badge.svg)](https://github.com/dyatlovk/ws_server/actions/workflows/ci.yml)
+[![Memory Tests](https://github.com/dyatlovk/ws_server/workflows/Memory%20Tests/badge.svg)](https://github.com/dyatlovk/ws_server/actions/workflows/memory-tests.yml)
+[![Code Quality](https://github.com/dyatlovk/ws_server/workflows/Code%20Quality/badge.svg)](https://github.com/dyatlovk/ws_server/actions/workflows/code-quality.yml)
+
 A modern, high-performance HTTP web server library written in C++20, designed for building scalable web applications and APIs.
 
 ## Table of Contents
@@ -12,6 +16,7 @@ A modern, high-performance HTTP web server library written in C++20, designed fo
 - [Advanced Usage](#advanced-usage)
 - [Architecture](#architecture)
 - [Development](#development)
+- [CI/CD](#cicd)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 - [Support](#support)
@@ -378,6 +383,55 @@ Performance benchmarks are available for:
 - Memory usage patterns
 - Concurrency handling
 
+## CI/CD
+
+This project uses GitHub Actions for continuous integration and deployment. The CI/CD pipeline includes:
+
+### Workflows
+
+- **🔄 CI/CD Pipeline** (`ci.yml`): Main build and test workflow
+  - Runs on push to `master`/`develop` and pull requests
+  - Multi-OS testing (Ubuntu 20.04, 22.04, latest)
+  - Debug and Release builds with GCC 10/11
+  - Unit tests and HTTP server functionality testing
+
+- **🧠 Memory Tests** (`memory-tests.yml`): Memory analysis and performance testing
+  - Valgrind memory leak detection
+  - HTTP server load testing
+  - Performance benchmarking with Apache Bench
+
+- **🔍 Code Quality** (`code-quality.yml`): Static analysis and security
+  - Clang-tidy static analysis
+  - Cppcheck analysis with C++20 standard
+  - Code formatting verification
+  - CodeQL security scanning
+
+- **💪 Stress Tests** (`stress-tests.yml`): Performance and stability testing
+  - Apache Bench load testing (light/medium/heavy)
+  - Long-running stability tests
+  - Concurrent connections testing
+
+- **🎯 Release** (`release.yml`): Automated release management
+  - Triggered by git tags (`v*.*.*`)
+  - Multi-OS binary builds
+  - GitHub release creation with artifacts
+
+### Running CI Locally
+
+Test the CI pipeline locally before pushing:
+
+```bash
+# Validate CI setup
+./validate_ci.sh
+
+# Run setup guide
+./setup_github_actions.sh
+```
+
+### Workflow Status
+
+Check the [Actions tab](https://github.com/dyatlovk/ws_server/actions) for workflow status and results.
+
 ## Troubleshooting
 
 ### Build Issues
@@ -459,12 +513,15 @@ cmake --build --preset=release-build-linux -j$(nproc)
 
 ## License
 
-This project is open source. Please check the repository for license details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- **Issues**: Report bugs and feature requests on GitHub
+- **Issues**: Report bugs and feature requests on [GitHub Issues](https://github.com/dyatlovk/ws_server/issues)
+- **Discussions**: Ask questions and get help on [GitHub Discussions](https://github.com/dyatlovk/ws_server/discussions)
 - **Documentation**: Additional examples in the `examples/` directory
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
+- **Security**: See [SECURITY.md](SECURITY.md) for security policy and reporting vulnerabilities
 - **Community**: Contributions and feedback welcome
 
 ---

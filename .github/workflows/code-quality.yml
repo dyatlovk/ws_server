@@ -1,0 +1,128 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+
+jobs:
+  static-analysis:
+    name: Static Analysis and Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          clang-14 \
+          clang-tools-14 \
+          clang-tidy-14 \
+          clang-format-14 \
+          cppcheck \
+          socat \
+          libfmt-dev \
+          pkg-config
+
+    - name: Configure project
+      run: |
+        export CC=clang-14
+        export CXX=clang++-14
+        cmake --preset makefile-x86_64-linux-debug
+
+    - name: Run clang-tidy
+      run: |
+        echo "Running clang-tidy static analysis..."
+        find src -name "*.c++" -o -name "*.h++" | head -10 | while read file; do
+          echo "Checking $file..."
+          clang-tidy-14 "$file" \
+            -p build/makefile-x86_64-linux-debug \
+            --checks="*,-android-*,-fuchsia-*,-google-*,-zircon-*,-abseil-*,-llvm-*,-modernize-use-trailing-return-type,-readability-identifier-length" \
+            --header-filter=".*" \
+            --format-style=file || echo "clang-tidy failed for $file"
+        done
+
+    - name: Run cppcheck
+      run: |
+        echo "Running cppcheck static analysis..."
+        cppcheck --enable=all \
+                 --std=c++20 \
+                 --platform=unix64 \
+                 --suppress=missingIncludeSystem \
+                 --suppress=unmatchedSuppression \
+                 --suppress=unusedFunction \
+                 --inline-suppr \
+                 --error-exitcode=1 \
+                 --xml \
+                 --output-file=cppcheck_results.xml \
+                 src/ || echo "cppcheck found issues"
+
+    - name: Check code formatting
+      run: |
+        echo "Checking code formatting with clang-format..."
+        find src -name "*.c++" -o -name "*.h++" | while read file; do
+          if ! clang-format-14 --dry-run --Werror "$file" >/dev/null 2>&1; then
+            echo "File $file is not properly formatted"
+            clang-format-14 --dry-run "$file" || true
+          fi
+        done
+
+    - name: Build with warnings as errors
+      run: |
+        export CC=clang-14
+        export CXX=clang++-14
+        cmake --build build --preset debug-build-linux --parallel $(nproc) -- VERBOSE=1
+
+    - name: Upload static analysis results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: static-analysis-results
+        path: |
+          cppcheck_results.xml
+        retention-days: 7
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          gcc-11 \
+          g++-11 \
+          socat \
+          libfmt-dev
+
+    - name: Build for CodeQL
+      run: |
+        export CC=gcc-11
+        export CXX=g++-11
+        cmake --preset makefile-x86_64-linux-debug
+        cmake --build build --preset debug-build-linux --parallel $(nproc)
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3

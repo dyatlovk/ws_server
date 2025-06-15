@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "manual"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "dyatlovk"  # Repository owner
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # CMake dependencies (if using package managers)
+  - package-ecosystem: "cmake"
+    directory: "/"
+    schedule:
+      interval: "manual"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "dyatlovk"  # Repository owner
+    commit-message:
+      prefix: "deps"
+      include: "scope"

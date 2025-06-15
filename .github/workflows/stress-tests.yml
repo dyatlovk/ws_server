@@ -1,0 +1,178 @@
+name: Stress Tests
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  stress-test:
+    name: HTTP Server Stress Testing
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          socat \
+          gcc-11 \
+          g++-11 \
+          libfmt-dev \
+          pkg-config \
+          curl \
+          apache2-utils \
+          wrk
+
+    - name: Build project
+      run: |
+        export CC=gcc-11
+        export CXX=g++-11
+        cmake --preset makefile-x86_64-linux-release
+        cmake --build build --preset release-build-linux --parallel $(nproc)
+
+    - name: Stress test with Apache Bench
+      timeout-minutes: 10
+      run: |
+        cd build/makefile-x86_64-linux-release/examples/http_server
+        if [ -f ./http_server ]; then
+          echo "Starting HTTP server for stress testing..."
+          ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 3
+
+          echo "Running Apache Bench stress tests..."
+
+          # Light load test
+          echo "=== Light Load Test (100 requests, 5 concurrent) ==="
+          ab -n 100 -c 5 http://localhost:8080/ | tee ab_light.log
+
+          # Medium load test
+          echo "=== Medium Load Test (1000 requests, 20 concurrent) ==="
+          ab -n 1000 -c 20 http://localhost:8080/ | tee ab_medium.log
+
+          # Heavy load test
+          echo "=== Heavy Load Test (5000 requests, 50 concurrent) ==="
+          ab -n 5000 -c 50 http://localhost:8080/ | tee ab_heavy.log
+
+          # Test different endpoints
+          echo "=== Testing /about endpoint ==="
+          ab -n 500 -c 10 http://localhost:8080/about | tee ab_about.log
+
+          echo "=== Testing /api endpoint ==="
+          ab -n 500 -c 10 http://localhost:8080/api | tee ab_api.log
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Stress test with wrk
+      timeout-minutes: 5
+      run: |
+        cd build/makefile-x86_64-linux-release/examples/http_server
+        if [ -f ./http_server ] && command -v wrk >/dev/null; then
+          echo "Starting HTTP server for wrk testing..."
+          ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 3
+
+          echo "Running wrk stress tests..."
+
+          # 30 second test with 4 threads and 100 connections
+          echo "=== wrk Test (30s, 4 threads, 100 connections) ==="
+          wrk -t4 -c100 -d30s http://localhost:8080/ | tee wrk_test.log
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Long-running stability test
+      timeout-minutes: 15
+      run: |
+        cd build/makefile-x86_64-linux-release/examples/http_server
+        if [ -f ./http_server ]; then
+          echo "Starting HTTP server for stability testing..."
+          ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 3
+
+          echo "Running 10-minute stability test..."
+
+          # Run continuous requests for 10 minutes
+          timeout 600s bash -c '
+            while true; do
+              for endpoint in "/" "/about" "/api"; do
+                curl -s "http://localhost:8080$endpoint" > /dev/null || echo "Request failed"
+                sleep 0.1
+              done
+              sleep 1
+            done
+          ' | tee stability_test.log
+
+          echo "Stability test completed"
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Concurrent connections test
+      timeout-minutes: 5
+      run: |
+        cd build/makefile-x86_64-linux-release/examples/http_server
+        if [ -f ./http_server ]; then
+          echo "Starting HTTP server for concurrent connections test..."
+          ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 3
+
+          echo "Testing concurrent connections..."
+
+          # Start multiple background curl processes
+          for i in {1..20}; do
+            (
+              for j in {1..50}; do
+                curl -s http://localhost:8080/ > /dev/null || echo "Request $i-$j failed"
+                sleep 0.05
+              done
+            ) &
+          done
+
+          # Wait for all background processes to complete
+          wait
+
+          echo "Concurrent connections test completed"
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Upload stress test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: stress-test-results
+        path: |
+          build/makefile-x86_64-linux-release/examples/http_server/ab_*.log
+          build/makefile-x86_64-linux-release/examples/http_server/wrk_*.log
+          build/makefile-x86_64-linux-release/examples/http_server/stability_test.log
+        retention-days: 30

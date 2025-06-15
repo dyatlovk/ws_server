@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+  build-and-test:
+    name: Build and Test for Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          socat \
+          gcc-11 \
+          g++-11 \
+          libfmt-dev \
+          pkg-config
+
+    - name: Build Release
+      run: |
+        export CC=gcc-11
+        export CXX=g++-11
+        cmake --preset makefile-x86_64-linux-release
+        cmake --build build --preset release-build-linux --parallel $(nproc)
+
+    - name: Run tests
+      run: |
+        # Switch to debug build for testing
+        cmake --preset makefile-x86_64-linux-debug
+        cmake --build build --preset debug-build-linux --parallel $(nproc)
+        cd build/makefile-x86_64-linux-debug
+        ctest --output-on-failure
+
+    - name: Package artifacts
+      run: |
+        mkdir -p release-${{ matrix.os }}
+        cp build/makefile-x86_64-linux-release/examples/http_server/http_server release-${{ matrix.os }}/ || true
+        cp build/makefile-x86_64-linux-release/tests/server_test release-${{ matrix.os }}/ || true
+        cp README.md release-${{ matrix.os }}/
+
+        # Create archive
+        tar -czf ws-server-${{ matrix.os }}.tar.gz release-${{ matrix.os }}/
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./ws-server-${{ matrix.os }}.tar.gz
+        asset_name: ws-server-${{ matrix.os }}.tar.gz
+        asset_content_type: application/gzip
+
+    needs: create-release
+
+  benchmark:
+    name: Release Performance Benchmark
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          socat \
+          gcc-11 \
+          g++-11 \
+          libfmt-dev \
+          pkg-config \
+          apache2-utils
+
+    - name: Build Release
+      run: |
+        export CC=gcc-11
+        export CXX=g++-11
+        cmake --preset makefile-x86_64-linux-release
+        cmake --build build --preset release-build-linux --parallel $(nproc)
+
+    - name: Run benchmarks
+      timeout-minutes: 10
+      run: |
+        cd build/makefile-x86_64-linux-release/examples/http_server
+        if [ -f ./http_server ]; then
+          ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          sleep 3
+
+          echo "=== Release Performance Benchmark ===" | tee benchmark_results.txt
+          date >> benchmark_results.txt
+
+          # Run comprehensive benchmark
+          ab -n 10000 -c 100 http://localhost:8080/ | tee -a benchmark_results.txt
+
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Upload benchmark results
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./build/makefile-x86_64-linux-release/examples/http_server/benchmark_results.txt
+        asset_name: benchmark_results.txt
+        asset_content_type: text/plain

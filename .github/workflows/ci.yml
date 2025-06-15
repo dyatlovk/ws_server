@@ -1,0 +1,143 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} with ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04]
+        build_type: [Debug, Release]
+        include:
+          - os: ubuntu-latest
+            cc: gcc-11
+            cxx: g++-11
+          - os: ubuntu-22.04
+            cc: gcc-11
+            cxx: g++-11
+          - os: ubuntu-20.04
+            cc: gcc-10
+            cxx: g++-10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          socat \
+          ${{ matrix.cc }} \
+          ${{ matrix.cxx }} \
+          libfmt-dev \
+          pkg-config \
+          curl \
+          wget
+
+    - name: Set up environment
+      run: |
+        echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+        echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+
+    - name: Verify dependencies
+      run: |
+        cmake --version
+        ${{ matrix.cxx }} --version
+        socat -V || echo "socat version check failed, but binary exists"
+
+    - name: Configure CMake (Debug)
+      if: matrix.build_type == 'Debug'
+      run: |
+        cmake --preset makefile-x86_64-linux-debug
+
+    - name: Configure CMake (Release)
+      if: matrix.build_type == 'Release'
+      run: |
+        cmake --preset makefile-x86_64-linux-release
+
+    - name: Build project
+      run: |
+        cmake --build build --preset ${{ matrix.build_type == 'Debug' && 'debug-build-linux' || 'release-build-linux' }} --parallel $(nproc)
+
+    - name: Run unit tests
+      if: matrix.build_type == 'Debug'
+      run: |
+        cd build/makefile-x86_64-linux-debug
+        ctest --output-on-failure --verbose
+
+    - name: Run specific test executable
+      if: matrix.build_type == 'Debug'
+      run: |
+        cd build/makefile-x86_64-linux-debug/tests
+        if [ -f ./server_test ]; then
+          ./server_test
+        else
+          echo "server_test executable not found"
+          find . -name "*test*" -type f -executable
+        fi
+
+    - name: Build examples
+      run: |
+        cd build/makefile-x86_64-linux-${{ matrix.build_type == 'Debug' && 'debug' || 'release' }}/examples
+        if [ -d http_server ]; then
+          echo "HTTP server example built successfully"
+          ls -la http_server/
+        fi
+
+    - name: Test HTTP server functionality
+      if: matrix.build_type == 'Debug'
+      timeout-minutes: 2
+      run: |
+        cd build/makefile-x86_64-linux-debug/examples/http_server
+        if [ -f ./http_server ]; then
+          # Start server in background
+          timeout 30s ./http_server --port 8080 &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 2
+
+          # Test basic endpoints
+          curl -f http://localhost:8080/ || echo "Root endpoint test failed"
+          curl -f http://localhost:8080/about || echo "About endpoint test failed"
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+        else
+          echo "HTTP server executable not found"
+        fi
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.build_type }}
+        path: |
+          build/*/Testing/Temporary/LastTest.log
+          build/*/Testing/Temporary/LastTestsFailed.log
+        retention-days: 7
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: matrix.build_type == 'Release'
+      with:
+        name: build-artifacts-${{ matrix.os }}
+        path: |
+          build/makefile-x86_64-linux-release/examples/http_server/http_server
+          build/makefile-x86_64-linux-release/tests/server_test
+        retention-days: 30

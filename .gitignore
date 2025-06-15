@@ -1,5 +1,49 @@
+# Build directories
 build/
+**/build/
+
+# Frontend build artifacts
 examples/mvc/frontend/dist
-.cache/
+examples/*/frontend/dist
+node_modules/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiler and build artifacts
 compile_commands.json
-node_modules
+.cache/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+.temp/
+
+# Test and coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+.coverage
+htmlcov/
+
+# Documentation build
+docs/_build/
+site/
+
+# Package managers
+.npm/
+.yarn/
