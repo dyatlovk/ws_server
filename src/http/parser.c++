@@ -1,5 +1,7 @@
 #include "parser.h++"
 
+#include <algorithm>
+
 #include "../stl/string/ws_string.h++"
 
 namespace http
@@ -13,7 +15,8 @@ namespace http
       , body_pos_(0)
       , head_end_pos_(0)
   {
-    input_.resize(BUFFER_LIMIT);
+    // Reserve space for efficiency but don't resize to avoid corrupting input
+    input_.reserve(BUFFER_LIMIT);
     tokenize();
   }
 
@@ -50,29 +53,34 @@ namespace http
 
   auto parser::find_body() -> const std::string &
   {
-    for (int i = 0; i <= input_.length(); i++)
+    body_.clear(); // Clear previous body content
+    const size_t input_len = input_.length();
+
+    for (size_t i = static_cast<size_t>(body_pos_); i < input_len; i++)
     {
-      if (i >= body_pos_)
-      {
-        char ch[1] = {input_[i]};
-        body_.append(ch);
-      }
+      body_ += input_[i];
     }
+
     return body_;
   }
 
   auto parser::split_body(const int header_limit) -> void
   {
-    for (int i = 0; i <= header_limit; i++)
+    const size_t input_len = input_.length();
+    const size_t limit = std::min(static_cast<size_t>(header_limit), input_len);
+
+    for (size_t i = 0; i < limit; i++)
     {
       header_ += input_.at(i);
-      // found crlf
-      if (input_.at(i) == '\r' && input_.at(i + 1) == '\n')
+      // found crlf - check bounds before accessing next characters
+      if (input_.at(i) == '\r' && (i + 3) < input_len)
       {
-        if (input_.at(i + 2) == '\r' && input_.at(i + 3) == '\n')
+        if (input_.at(i + 1) == '\n' && input_.at(i + 2) == '\r' && input_.at(i + 3) == '\n')
         {
-          head_end_pos_ = i + 1;
-          body_pos_ = i + 4;
+          // Include the \n after the first \r to complete the last header line
+          header_ += input_.at(i + 1);
+          head_end_pos_ = static_cast<int>(i + 1);
+          body_pos_ = static_cast<int>(i + 4);
           break;
         }
       }
@@ -81,27 +89,46 @@ namespace http
 
   auto parser::tokenize_headers() -> void
   {
-    const std::string b(input_);
     std::string line;
-    for (int i = 0; i <= head_end_pos_; i++)
+    bool first_line = true;
+
+    // Process the header_ content that was built by split_body()
+    for (size_t i = 0; i < header_.length(); i++)
     {
-      if (i + 1 <= head_end_pos_)
+      char current_char = header_.at(i);
+
+      if (current_char != '\r' && current_char != '\n')
       {
-        char ch[1] = {b.at(i)};
-        if (b[i] != '\r' && b[i] != '\n')
+        line += current_char;
+      }
+      else if (current_char == '\r' && i + 1 < header_.length() && header_.at(i + 1) == '\n')
+      {
+        // Found CRLF - process the line
+        if (first_line)
         {
-          line.append(ch);
+          req_line_ = line;
+          first_line = false;
         }
-        if (b[i] == '\r' && b[i + 1] == '\n') // found eol
+        else if (!line.empty()) // Only process non-empty lines as headers
         {
           auto kv = ws_stl::split_string(line, ':');
-          if (kv.size() == 0) req_line_ = line;
           if (kv.size() > 0)
           {
             headers_.insert({kv.begin()->first, kv.begin()->second});
           }
-          line.clear(); // empty line for next iterator
         }
+        line.clear();
+        i++; // Skip the \n character
+      }
+    }
+
+    // Process any remaining line at the end (in case there's no trailing CRLF)
+    if (!line.empty() && !first_line)
+    {
+      auto kv = ws_stl::split_string(line, ':');
+      if (kv.size() > 0)
+      {
+        headers_.insert({kv.begin()->first, kv.begin()->second});
       }
     }
   }

@@ -47,29 +47,31 @@ namespace http
       std::string uri;
       std::string version_raw;
       int spaces_count = 1;
-      for (int i = 0; i < input.size(); i++)
+      const size_t input_size = input.size();
+
+      for (size_t i = 0; i < input_size; i++)
       {
-        char ch[1] = {input.at(i)};
-        if (input.at(i) == ' ')
+        char current_char = input.at(i);
+
+        if (current_char == ' ')
         {
           spaces_count++;
+          continue; // Skip the space character itself
         }
 
         if (spaces_count > 3) break;
 
         if (spaces_count == 1)
         {
-          meth.append(ch);
+          meth += current_char;
         }
-
-        if (spaces_count == 2)
+        else if (spaces_count == 2)
         {
-          uri.append(ch);
+          uri += current_char;
         }
-
-        if (spaces_count == 3)
+        else if (spaces_count == 3)
         {
-          version_raw.append(ch);
+          version_raw += current_char;
         }
       }
 
