@@ -70,7 +70,7 @@ namespace http
   server::~server()
   {
     if (epoll_) delete epoll_;
-    if (srv_) delete srv_;
+    // srv_ is now a smart pointer - no manual delete needed
     fmt::println("server is shutting down");
   }
 

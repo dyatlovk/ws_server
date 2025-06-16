@@ -1,14 +1,16 @@
 #include "inet_socket.h++"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
+#include <memory>
 #include <sys/socket.h>
 #include <unistd.h>
 
 namespace io
 {
   inet_socket::inet_socket(const char *host, const int port, address_support address, type_support type)
-      : host_(host)
+      : host_(host ? std::string(host) : "") // Store copy to avoid dangling pointer
       , port_(port)
   {
     // Validate input parameters
@@ -25,6 +27,9 @@ namespace io
     type_ = static_cast<typename std::underlying_type<type_support>::type>(type);
     proto_ = 0;
     readBuf.clear();
+
+    // Initialize address structure to zero
+    std::memset(&addr_, 0, sizeof(addr_));
   }
 
   inet_socket::~inet_socket()
@@ -46,12 +51,28 @@ namespace io
       return false;
     }
 
-    inet_addr.sin_family = domain_;
-    update_addr_host(host_);
-    update_addr_port(port_);
+    // Initialize address structure based on domain
+    if (domain_ == AF_INET)
+    {
+      addr_.inet4_addr.sin_family = domain_;
+      update_addr_host(host_.c_str());
+      update_addr_port(port_);
+    }
+    else if (domain_ == AF_INET6)
+    {
+      addr_.inet6_addr.sin6_family = domain_;
+      update_addr_host(host_.c_str());
+      update_addr_port(port_);
+    }
+    else
+    {
+      state_ = states::error;
+      ::close(fd);
+      fd = -1;
+      return false;
+    }
 
     state_ = states::opened;
-
     return true;
   }
 
@@ -59,7 +80,26 @@ namespace io
   {
     if (state_ >= states::binded) return true;
 
-    const int b = ::bind(fd, (const struct sockaddr *)&inet_addr, sizeof(inet_addr));
+    const struct sockaddr *addr_ptr;
+    socklen_t addr_len;
+
+    if (domain_ == AF_INET)
+    {
+      addr_ptr = reinterpret_cast<const struct sockaddr *>(&addr_.inet4_addr);
+      addr_len = sizeof(addr_.inet4_addr);
+    }
+    else if (domain_ == AF_INET6)
+    {
+      addr_ptr = reinterpret_cast<const struct sockaddr *>(&addr_.inet6_addr);
+      addr_len = sizeof(addr_.inet6_addr);
+    }
+    else
+    {
+      state_ = states::error;
+      return false;
+    }
+
+    const int b = ::bind(fd, addr_ptr, addr_len);
 
     if (b == -1)
     {
@@ -68,7 +108,6 @@ namespace io
     }
 
     state_ = states::binded;
-
     return true;
   }
 
@@ -125,14 +164,18 @@ namespace io
       return readBuf; // Return empty string for invalid parameters
     }
 
-    char buf[bufSize];
-    memset(buf, 0, sizeof(buf));
+    // Limit buffer size to prevent stack overflow
+    const int maxBufSize = std::min(bufSize, 8192);
+
+    // Use heap allocation for buffer to avoid stack overflow
+    std::unique_ptr<char[]> buf(new char[maxBufSize]);
+    std::memset(buf.get(), 0, maxBufSize);
 
     int byte_count = 0;
     // read from socket until EOF
-    while ((byte_count = ::read(conn, buf, bufSize)) > 0)
+    while ((byte_count = ::read(conn, buf.get(), maxBufSize)) > 0)
     {
-      readBuf.append(buf, byte_count);
+      readBuf.append(buf.get(), byte_count);
     }
 
     return readBuf;
@@ -146,19 +189,33 @@ namespace io
       return false;
     }
 
-    int r = ::write(conn, buf, size);
-
-    if (r == -1)
+    int total_sent = 0;
+    while (total_sent < size)
     {
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
+      int r = ::write(conn, buf + total_sent, size - total_sent);
+
+      if (r == -1)
       {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+          // For non-blocking sockets, return false to indicate partial failure
+          return false;
+        }
+        // For other errors, don't close the server socket
+        // The caller should handle connection closure
         return false;
       }
-      close();
-      return false;
+
+      if (r == 0)
+      {
+        // Connection closed by peer
+        return false;
+      }
+
+      total_sent += r;
     }
 
-    return true;
+    return true; // All data sent successfully
   }
 
   auto inet_socket::write_chunked(const int conn, const char *buf, int size) -> int
@@ -200,40 +257,40 @@ namespace io
     append_flags(O_NONBLOCK);
   }
 
-  auto inet_socket::make_tcp(const char *h, const int p) -> inet_socket *
+  auto inet_socket::make_tcp(const char *h, const int p) -> std::unique_ptr<inet_socket>
   {
     if (!h || p <= 0 || p > 65535)
     {
       return nullptr;
     }
-    return new inet_socket(h, p, address_support::ip4, type_support::tcp);
+    return std::make_unique<inet_socket>(h, p, address_support::ip4, type_support::tcp);
   }
 
-  auto inet_socket::make_tcp6(const char *h, const int p) -> inet_socket *
+  auto inet_socket::make_tcp6(const char *h, const int p) -> std::unique_ptr<inet_socket>
   {
     if (!h || p <= 0 || p > 65535)
     {
       return nullptr;
     }
-    return new inet_socket(h, p, address_support::ip6, type_support::tcp);
+    return std::make_unique<inet_socket>(h, p, address_support::ip6, type_support::tcp);
   }
 
-  auto inet_socket::make_udp(const char *h, const int p) -> inet_socket *
+  auto inet_socket::make_udp(const char *h, const int p) -> std::unique_ptr<inet_socket>
   {
     if (!h || p <= 0 || p > 65535)
     {
       return nullptr;
     }
-    return new inet_socket(h, p, address_support::ip4, type_support::udp);
+    return std::make_unique<inet_socket>(h, p, address_support::ip4, type_support::udp);
   }
 
-  auto inet_socket::make_udp6(const char *h, const int p) -> inet_socket *
+  auto inet_socket::make_udp6(const char *h, const int p) -> std::unique_ptr<inet_socket>
   {
     if (!h || p <= 0 || p > 65535)
     {
       return nullptr;
     }
-    return new inet_socket(h, p, address_support::ip6, type_support::udp);
+    return std::make_unique<inet_socket>(h, p, address_support::ip6, type_support::udp);
   }
 
   // ---------------------------------------------------------------------------
@@ -241,7 +298,27 @@ namespace io
   // ---------------------------------------------------------------------------
   auto inet_socket::update_addr_host(const char *h) -> void
   {
-    int result = inet_pton(domain_, h, &(inet_addr.sin_addr));
+    if (!h)
+    {
+      state_ = states::error;
+      return;
+    }
+
+    int result;
+    if (domain_ == AF_INET)
+    {
+      result = inet_pton(AF_INET, h, &(addr_.inet4_addr.sin_addr));
+    }
+    else if (domain_ == AF_INET6)
+    {
+      result = inet_pton(AF_INET6, h, &(addr_.inet6_addr.sin6_addr));
+    }
+    else
+    {
+      state_ = states::error;
+      return;
+    }
+
     if (result <= 0)
     {
       state_ = states::error;
@@ -255,6 +332,18 @@ namespace io
       state_ = states::error;
       return;
     }
-    inet_addr.sin_port = htons(static_cast<uint16_t>(p));
+
+    if (domain_ == AF_INET)
+    {
+      addr_.inet4_addr.sin_port = htons(static_cast<uint16_t>(p));
+    }
+    else if (domain_ == AF_INET6)
+    {
+      addr_.inet6_addr.sin6_port = htons(static_cast<uint16_t>(p));
+    }
+    else
+    {
+      state_ = states::error;
+    }
   }
 } // namespace io
