@@ -7,20 +7,26 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "../../utils/logger.h++"
+
 namespace io
 {
   inet_socket::inet_socket(const char *host, const int port, address_support address, type_support type)
       : host_(host ? std::string(host) : "") // Store copy to avoid dangling pointer
       , port_(port)
   {
+    LOG_DEBUG("Creating inet_socket for {}:{}", host ? host : "NULL", port);
+
     // Validate input parameters
     if (!host || port <= 0 || port > 65535)
     {
+      LOG_ERROR("Invalid parameters: host={}, port={}", host ? host : "NULL", port);
       state_ = states::error;
       fd = -1;
       return;
     }
 
+    LOG_DEBUG("Socket parameters validated successfully");
     state_ = states::noinit;
     fd = -1;
     domain_ = static_cast<typename std::underlying_type<address_support>::type>(address);
@@ -30,26 +36,39 @@ namespace io
 
     // Initialize address structure to zero
     std::memset(&addr_, 0, sizeof(addr_));
+    LOG_DEBUG("Socket initialized with domain={}, type={}", domain_, type_);
   }
 
   inet_socket::~inet_socket()
   {
+    LOG_DEBUG("Destroying inet_socket for {}:{}", host_, port_);
     close();
   }
 
   auto inet_socket::open() -> bool
   {
-    if (state_ >= states::opened) return true;
+    if (state_ >= states::opened) {
+      LOG_DEBUG("Socket already opened for {}:{}", host_, port_);
+      return true;
+    }
 
     // Check if we're in error state from constructor
-    if (state_ == states::error) return false;
+    if (state_ == states::error) {
+      LOG_ERROR("Cannot open socket: in error state");
+      return false;
+    }
+
+    LOG_INFO("Opening socket for {}:{} (domain={}, type={})", host_, port_, domain_, type_);
 
     fd = ::socket(domain_, type_, proto_);
     if (fd == -1)
     {
+      LOG_ERROR("Failed to create socket: {}", std::strerror(errno));
       state_ = states::error;
       return false;
     }
+
+    LOG_DEBUG("Socket created successfully with fd={}", fd);
 
     // Initialize address structure based on domain
     if (domain_ == AF_INET)
@@ -57,15 +76,18 @@ namespace io
       addr_.inet4_addr.sin_family = domain_;
       update_addr_host(host_.c_str());
       update_addr_port(port_);
+      LOG_DEBUG("IPv4 address configured");
     }
     else if (domain_ == AF_INET6)
     {
       addr_.inet6_addr.sin6_family = domain_;
       update_addr_host(host_.c_str());
       update_addr_port(port_);
+      LOG_DEBUG("IPv6 address configured");
     }
     else
     {
+      LOG_ERROR("Unsupported address family: {}", domain_);
       state_ = states::error;
       ::close(fd);
       fd = -1;
@@ -73,12 +95,18 @@ namespace io
     }
 
     state_ = states::opened;
+    LOG_INFO("Socket opened successfully for {}:{}", host_, port_);
     return true;
   }
 
   auto inet_socket::bind() -> bool
   {
-    if (state_ >= states::binded) return true;
+    if (state_ >= states::binded) {
+      LOG_DEBUG("Socket already bound for {}:{}", host_, port_);
+      return true;
+    }
+
+    LOG_INFO("Binding socket to {}:{}", host_, port_);
 
     const struct sockaddr *addr_ptr;
     socklen_t addr_len;
@@ -87,14 +115,17 @@ namespace io
     {
       addr_ptr = reinterpret_cast<const struct sockaddr *>(&addr_.inet4_addr);
       addr_len = sizeof(addr_.inet4_addr);
+      LOG_DEBUG("Using IPv4 address structure");
     }
     else if (domain_ == AF_INET6)
     {
       addr_ptr = reinterpret_cast<const struct sockaddr *>(&addr_.inet6_addr);
       addr_len = sizeof(addr_.inet6_addr);
+      LOG_DEBUG("Using IPv6 address structure");
     }
     else
     {
+      LOG_ERROR("Invalid address family for bind: {}", domain_);
       state_ = states::error;
       return false;
     }
@@ -103,26 +134,34 @@ namespace io
 
     if (b == -1)
     {
+      LOG_ERROR("Failed to bind socket to {}:{}: {}", host_, port_, std::strerror(errno));
       state_ = states::error;
       return false;
     }
 
     state_ = states::binded;
+    LOG_INFO("Socket bound successfully to {}:{}", host_, port_);
     return true;
   }
 
   auto inet_socket::listen(const int max) -> bool
   {
-    if (state_ >= states::listen) return true;
+    if (state_ >= states::listen) {
+      LOG_DEBUG("Socket already listening on {}:{}", host_, port_);
+      return true;
+    }
+
+    LOG_INFO("Starting to listen on {}:{} with backlog={}", host_, port_, max);
 
     if (::listen(fd, max) == -1)
     {
+      LOG_ERROR("Failed to listen on {}:{}: {}", host_, port_, std::strerror(errno));
       state_ = states::error;
       return false;
     }
 
     state_ = states::listen;
-
+    LOG_INFO("Socket listening successfully on {}:{}", host_, port_);
     return true;
   }
 
@@ -130,14 +169,18 @@ namespace io
   {
     if (fd != -1)
     {
+      LOG_DEBUG("Closing socket fd={} for {}:{}", fd, host_, port_);
       ::close(fd);
       fd = -1;
     }
     state_ = states::closed;
+    LOG_DEBUG("Socket closed for {}:{}", host_, port_);
   }
 
   auto inet_socket::accept() -> int
   {
+    LOG_DEBUG("Accepting connection on {}:{}", host_, port_);
+
     struct sockaddr peer_addr;
     socklen_t peer_len = sizeof(peer_addr);
     const int peer = ::accept(fd, &peer_addr, &peer_len);
@@ -146,36 +189,55 @@ namespace io
     {
       if (errno != EAGAIN && errno != EWOULDBLOCK)
       {
+        LOG_ERROR("Accept failed on {}:{}: {}", host_, port_, std::strerror(errno));
         state_ = states::error;
+      }
+      else
+      {
+        LOG_DEBUG("Accept would block on {}:{}", host_, port_);
       }
       return -1;
     }
 
+    LOG_INFO("Accepted connection from client (fd={})", peer);
     return peer;
   }
 
   auto inet_socket::read(const int conn, const int bufSize) -> const std::string &
   {
     readBuf.clear();
+    LOG_DEBUG("Reading from connection fd={}, bufSize={}", conn, bufSize);
 
     // Validate parameters
     if (conn < 0 || bufSize <= 0)
     {
+      LOG_WARN("Invalid read parameters: conn={}, bufSize={}", conn, bufSize);
       return readBuf; // Return empty string for invalid parameters
     }
 
     // Limit buffer size to prevent stack overflow
     const int maxBufSize = std::min(bufSize, 8192);
+    if (maxBufSize < bufSize) {
+      LOG_DEBUG("Buffer size limited from {} to {}", bufSize, maxBufSize);
+    }
 
     // Use heap allocation for buffer to avoid stack overflow
     std::unique_ptr<char[]> buf(new char[maxBufSize]);
     std::memset(buf.get(), 0, maxBufSize);
 
     int byte_count = 0;
+    int total_bytes = 0;
     // read from socket until EOF
     while ((byte_count = ::read(conn, buf.get(), maxBufSize)) > 0)
     {
       readBuf.append(buf.get(), byte_count);
+      total_bytes += byte_count;
+    }
+
+    if (byte_count == -1) {
+      LOG_ERROR("Read error on fd={}: {}", conn, std::strerror(errno));
+    } else {
+      LOG_DEBUG("Read {} bytes from fd={}", total_bytes, conn);
     }
 
     return readBuf;
@@ -183,9 +245,13 @@ namespace io
 
   auto inet_socket::write(const int conn, const char *buf, int size) -> bool
   {
+    LOG_DEBUG("Writing {} bytes to connection fd={}", size, conn);
+
     // Validate parameters
     if (conn < 0 || !buf || size <= 0)
     {
+      LOG_WARN("Invalid write parameters: conn={}, buf={}, size={}",
+               conn, static_cast<const void*>(buf), size);
       return false;
     }
 
@@ -198,9 +264,11 @@ namespace io
       {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
+          LOG_DEBUG("Write would block on fd={} after {} bytes", conn, total_sent);
           // For non-blocking sockets, return false to indicate partial failure
           return false;
         }
+        LOG_ERROR("Write error on fd={}: {}", conn, std::strerror(errno));
         // For other errors, don't close the server socket
         // The caller should handle connection closure
         return false;
@@ -208,13 +276,16 @@ namespace io
 
       if (r == 0)
       {
+        LOG_WARN("Connection closed by peer on fd={}", conn);
         // Connection closed by peer
         return false;
       }
 
       total_sent += r;
+      LOG_DEBUG("Sent {} bytes to fd={} (total: {}/{})", r, conn, total_sent, size);
     }
 
+    LOG_DEBUG("Successfully wrote all {} bytes to fd={}", size, conn);
     return true; // All data sent successfully
   }
 
