@@ -25,7 +25,7 @@ A modern, high-performance HTTP web server library written in C++20, designed fo
 - **Middleware Support**: Modular middleware architecture for request/response processing
 - **Static File Serving**: Built-in static file server with MIME type detection
 - **JSON Support**: Native JSON request/response handling
-- **Thread Pool**: Asynchronous request processing with configurable thread pool
+- **High-Performance Thread Pool**: Advanced thread pool with logging, monitoring, exception handling, and graceful shutdown
 - **Socket Abstraction**: TCP and Unix domain socket support
 - **MVC Architecture**: Model-View-Controller pattern support for structured applications
 - **Comprehensive Logging**: Colored, timestamped logging system with multiple levels and fmt-style formatting
@@ -61,6 +61,7 @@ The project includes several comprehensive examples:
 * **[HTTP Server](./examples/http_server/)** - Full-featured HTTP server with routing, JSON API, and static files
 * **[MVC Application](./examples/mvc/)** - Complete MVC web application with frontend/backend separation
 * **[Logging Demo](./examples/logging_demo/)** - Comprehensive demonstration of the logging system features
+* **[Thread Pool Demo](./examples/thread_pool_demo/)** - Advanced thread pool features with monitoring and error handling
 
 ## Installation
 
@@ -137,6 +138,9 @@ cmake --build --preset=release-build-linux -j$(nproc)
 
 # Run logging system demonstration
 ./build/makefile-x86_64-linux-debug/examples/logging_demo/logging_demo
+
+# Run thread pool demonstration
+cd examples/thread_pool_demo && g++ -std=c++20 -I../../src -I../../vendor/fmt/include main.c++ ../../build/src/libcore.a -L../../vendor/fmt/linux -lfmt -pthread -o thread_pool_demo && ./thread_pool_demo
 ```
 
 ### Quick Verification
@@ -286,6 +290,48 @@ LOG_ERROR("Failed to create socket: {}", std::strerror(errno));
 LOG_INFO("Accepted connection from client (fd={})", peer);
 LOG_DEBUG("Reading from connection fd={}, bufSize={}", conn, bufSize);
 ```
+
+### Thread Pool
+
+The server includes a high-performance thread pool with advanced features:
+
+```cpp
+#include <utils/thread_pool.h++>
+
+// Create thread pool with optimal size
+utils::thread_pool pool(std::thread::hardware_concurrency());
+
+// Submit tasks with return values
+auto future = pool.enqueue([](int x, int y) { return x + y; }, 10, 20);
+int result = future.get();
+
+// Wait for all tasks to complete
+pool.wait_for_all();
+
+// Wait with timeout
+bool completed = pool.wait_for_all_for(std::chrono::seconds(5));
+
+// Get real-time statistics
+auto stats = pool.get_statistics();
+LOG_INFO("Pool status - Queue: {}, Active: {}, Completed: {}, Failed: {}",
+         stats.queue_size, stats.active_tasks, stats.completed_tasks, stats.failed_tasks);
+
+// Graceful shutdown with timeout
+bool clean_shutdown = pool.shutdown(std::chrono::seconds(30));
+```
+
+#### Thread Pool Features
+
+- **Exception Safety**: Tasks throwing exceptions don't crash worker threads
+- **Comprehensive Logging**: All operations logged with context
+- **Real-time Monitoring**: Statistics for queue size, active tasks, completions, failures
+- **Proper Wait Functionality**: Wait for both queued AND executing tasks
+- **Timeout Support**: Configurable timeouts for wait and shutdown operations
+- **Performance Optimized**: No std::bind overhead, atomic counters for statistics
+- **Thread Safe**: All operations safe from multiple threads
+- **Resource Management**: Guaranteed cleanup with graceful shutdown
+
+For detailed documentation, see [THREAD_POOL.md](./THREAD_POOL.md).
 
 ## Advanced Usage
 
