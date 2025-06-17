@@ -1,6 +1,8 @@
 #pragma once
 
 #include <arpa/inet.h>
+#include <memory>
+#include <string>
 
 #include "socket.h++"
 
@@ -44,13 +46,13 @@ namespace io
 
     auto set_non_blocking() -> void;
 
-    // Aliases fot tcp
-    auto static make_tcp(const char *h, const int p) -> inet_socket *;
-    auto static make_tcp6(const char *h, const int p) -> inet_socket *;
+    // Aliases for tcp
+    static auto make_tcp(const char *h, const int p) -> std::unique_ptr<inet_socket>;
+    static auto make_tcp6(const char *h, const int p) -> std::unique_ptr<inet_socket>;
 
-    // aliases fot udp
-    auto static make_udp(const char *h, const int p) -> inet_socket *;
-    auto static make_udp6(const char *h, const int p) -> inet_socket *;
+    // aliases for udp
+    static auto make_udp(const char *h, const int p) -> std::unique_ptr<inet_socket>;
+    static auto make_udp6(const char *h, const int p) -> std::unique_ptr<inet_socket>;
 
   private:
     auto update_addr_host(const char *h) -> void;
@@ -58,8 +60,14 @@ namespace io
 
   private:
     int port_;
-    const char *host_;
+    std::string host_; // Store copy instead of pointer
 
-    struct sockaddr_in inet_addr;
+    // Union to support both IPv4 and IPv6
+    union
+    {
+      struct sockaddr_in inet4_addr;
+      struct sockaddr_in6 inet6_addr;
+      struct sockaddr generic_addr;
+    } addr_;
   };
 } // namespace io

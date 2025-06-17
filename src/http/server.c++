@@ -1,7 +1,7 @@
 #include "server.h++"
 
 #include <csignal>
-#include <fmt/core.h>
+#include <utils/logger.h++>
 
 #include "http/middlewares/response.h++"
 #include "http/parser.h++"
@@ -34,7 +34,7 @@ namespace http
     }
     catch (std::runtime_error &e)
     {
-      fmt::println("{}", e.what());
+      LOG_ERROR("Failed to initialize epoll: {}", e.what());
       shutdown();
       return;
     }
@@ -70,8 +70,8 @@ namespace http
   server::~server()
   {
     if (epoll_) delete epoll_;
-    if (srv_) delete srv_;
-    fmt::println("server is shutting down");
+    // srv_ is now a smart pointer - no manual delete needed
+    LOG_INFO("Server is shutting down");
   }
 
   auto server::listen() -> int
@@ -87,7 +87,7 @@ namespace http
       }
       catch (std::runtime_error &e)
       {
-        fmt::println("exception reason: {}", e.what());
+        LOG_ERROR("Exception during epoll wait: {}", e.what());
       }
     }
 

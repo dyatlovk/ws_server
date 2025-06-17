@@ -19,6 +19,7 @@ file(GLOB SRV_SOURCES
     http/server.c++
     http/middlewares/response.c++
     utils/thread_pool.c++
+    utils/logger.c++
 )
 
 # Build type

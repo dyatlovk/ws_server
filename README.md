@@ -28,6 +28,7 @@ A modern, high-performance HTTP web server library written in C++20, designed fo
 - **Thread Pool**: Asynchronous request processing with configurable thread pool
 - **Socket Abstraction**: TCP and Unix domain socket support
 - **MVC Architecture**: Model-View-Controller pattern support for structured applications
+- **Comprehensive Logging**: Colored, timestamped logging system with multiple levels and fmt-style formatting
 - **Comprehensive Testing**: Full test suite with unit tests and benchmarks
 
 ## Quick Start
@@ -59,6 +60,7 @@ The project includes several comprehensive examples:
 * **[Basic Server](./examples/basic/)** - Minimal HTTP server setup
 * **[HTTP Server](./examples/http_server/)** - Full-featured HTTP server with routing, JSON API, and static files
 * **[MVC Application](./examples/mvc/)** - Complete MVC web application with frontend/backend separation
+* **[Logging Demo](./examples/logging_demo/)** - Comprehensive demonstration of the logging system features
 
 ## Installation
 
@@ -132,6 +134,9 @@ cmake --build --preset=release-build-linux -j$(nproc)
 
 # Run MVC example
 ./build/makefile-x86_64-linux-debug/examples/mvc/mvc
+
+# Run logging system demonstration
+./build/makefile-x86_64-linux-debug/examples/logging_demo/logging_demo
 ```
 
 ### Quick Verification
@@ -151,6 +156,9 @@ kill $SERVER_PID
 
 # 3. Check benchmark runs without errors
 ./build/makefile-x86_64-linux-release/benchmarks/response/benchmark_response
+
+# 4. Test logging system
+./build/makefile-x86_64-linux-debug/examples/logging_demo/logging_demo
 ```
 
 ## API Reference
@@ -225,20 +233,58 @@ res->with_added_header("X-Custom", "value");
 res->with_status(404, "Not Found");
 ```
 
-### Middleware
+### Logging System
+
+The server includes a comprehensive logging system with colored output, timestamps, and multiple log levels:
 
 ```cpp
-// Built-in response middleware for static files and error handling
-http::middlewares::response response_middleware(&options);
-app.add_middleware(&response_middleware);
+#include <utils/logger.h++>
 
-// Custom middleware implementation
-class CustomMiddleware : public http::middleware_interface {
-public:
-    void execute(http::request *req, http::response_interface &res) override {
-        // Custom middleware logic
-    }
-};
+// Basic logging with different levels
+LOG_DEBUG("Detailed diagnostic information: {}", debug_info);
+LOG_INFO("General application flow: {}", status);
+LOG_WARN("Warning condition: {}", warning_msg);
+LOG_ERROR("Error occurred: {}", error_msg);
+
+// Configure log level filtering
+utils::Logger::set_level(utils::LogLevel::INFO);  // Hide DEBUG messages
+utils::Logger::set_level(utils::LogLevel::WARN);  // Hide DEBUG and INFO
+utils::Logger::set_level(utils::LogLevel::ERROR); // Only show ERROR
+
+// Advanced formatting with fmt-style syntax
+LOG_INFO("User {} has {} unread messages", username, count);
+LOG_DEBUG("Server stats: CPU={:.1f}%, Memory={:.2f}GB", cpu_usage, memory_gb);
+LOG_ERROR("Database connection failed: host={}, port={}, timeout={}ms",
+          db_host, db_port, timeout);
+```
+
+#### Log Levels and Colors
+
+| Level | Color  | Description | Output Stream |
+|-------|--------|-------------|---------------|
+| DEBUG | Cyan   | Detailed diagnostic information | stdout |
+| INFO  | Green  | General information about program execution | stdout |
+| WARN  | Yellow | Warning conditions that should be noted | stderr |
+| ERROR | Red    | Error conditions that indicate problems | stderr |
+
+#### Integration with HTTP Server
+
+The logging system is already integrated throughout the HTTP server components:
+
+```cpp
+// Server startup and shutdown
+LOG_INFO("Server starting on {}:{}", host, port);
+LOG_ERROR("Failed to initialize epoll: {}", e.what());
+LOG_INFO("Server is shutting down");
+
+// Socket operations (automatically logged)
+LOG_DEBUG("Creating inet_socket for {}:{}", host, port);
+LOG_INFO("Opening socket for {}:{} (domain={}, type={})", host, port, domain, type);
+LOG_ERROR("Failed to create socket: {}", std::strerror(errno));
+
+// Connection handling
+LOG_INFO("Accepted connection from client (fd={})", peer);
+LOG_DEBUG("Reading from connection fd={}, bufSize={}", conn, bufSize);
 ```
 
 ## Advanced Usage
@@ -288,6 +334,52 @@ The server automatically serves static files from the configured public director
 - **Zero-Copy Operations**: Efficient memory management
 - **Connection Keep-Alive**: HTTP/1.1 persistent connections
 
+### Logging and Debugging
+
+The server provides comprehensive logging capabilities for development and production:
+
+```cpp
+// Development logging - show all messages
+#ifdef DEBUG
+    utils::Logger::set_level(utils::LogLevel::DEBUG);
+#else
+    utils::Logger::set_level(utils::LogLevel::INFO);
+#endif
+
+// Production logging with structured messages
+LOG_INFO("Request processed: method={}, path='{}', status={}, duration={}ms",
+         method, path, status_code, duration);
+
+// Error handling with context
+try {
+    // ... server operations
+} catch (const std::exception& e) {
+    LOG_ERROR("Server error: {}", e.what());
+}
+```
+
+#### Best Practices for Logging
+
+1. **Use appropriate log levels**:
+   - `DEBUG`: Detailed diagnostic info for development
+   - `INFO`: General application flow and important events
+   - `WARN`: Recoverable issues that should be noted
+   - `ERROR`: Serious problems that need attention
+
+2. **Include context in messages**:
+   ```cpp
+   LOG_ERROR("Failed to process request: client={}, path='{}', error='{}'",
+             client_id, request_path, error_msg);
+   ```
+
+3. **Be mindful of sensitive data** - never log passwords or tokens
+
+4. **Use structured logging for metrics**:
+   ```cpp
+   LOG_INFO("Performance metrics: requests={}, avg_time={}ms, errors={}",
+            request_count, avg_response_time, error_count);
+   ```
+
 ## Architecture
 
 ### Core Components
@@ -298,6 +390,7 @@ The server automatically serves static files from the configured public director
 - **Router**: URL pattern matching and parameter extraction
 - **Middleware Stack**: Pluggable request/response processing
 - **Thread Pool**: Asynchronous task execution
+- **Logging System**: Colored, timestamped logging with multiple levels and fmt-style formatting
 
 ### Dependencies
 
@@ -314,7 +407,7 @@ The server automatically serves static files from the configured public director
 │   ├── http/              # HTTP protocol implementation
 │   ├── io/                # I/O abstractions (sockets, epoll)
 │   ├── stl/               # STL extensions
-│   └── utils/             # Utility classes
+│   └── utils/             # Utility classes (logging, thread pool)
 ├── examples/              # Example applications
 ├── tests/                 # Unit test suite
 ├── benchmarks/            # Performance benchmarks
@@ -455,6 +548,34 @@ cmake --build --preset=debug-build-linux -j$(nproc)
 cmake --preset=makefile-x86_64-linux-release
 cmake --build --preset=release-build-linux -j$(nproc)
 ./build/makefile-x86_64-linux-release/examples/basic/basic_example
+```
+
+### Logging Issues
+
+**Too verbose logging in production:**
+```bash
+# Set appropriate log level to reduce output
+utils::Logger::set_level(utils::LogLevel::WARN);  # Only warnings and errors
+utils::Logger::set_level(utils::LogLevel::ERROR); # Only errors
+```
+
+**Missing log output:**
+```bash
+# Ensure log level allows your messages
+utils::Logger::set_level(utils::LogLevel::DEBUG);  # Show all messages
+
+# Check if you're using the correct macros
+LOG_INFO("This message will appear");  # Correct
+fmt::println("This bypasses logging system");  # Bypasses logging
+```
+
+**Log colors not showing:**
+```bash
+# Ensure terminal supports ANSI colors
+echo $TERM  # Should show color-capable terminal like xterm-256color
+
+# Test color support
+./build/makefile-x86_64-linux-debug/examples/logging_demo/logging_demo
 ```
 
 ## License

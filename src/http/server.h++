@@ -46,7 +46,7 @@ namespace http
     router router_;
 
     io::epoll *epoll_;
-    io::inet_socket *srv_;
+    std::unique_ptr<io::inet_socket> srv_;
 
     utils::thread_pool thr_pool;
     std::atomic<bool> running_ = false;
