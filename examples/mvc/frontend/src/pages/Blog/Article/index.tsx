@@ -32,7 +32,7 @@ const Article = (): JSX.Element => {
 }
 
 async function getArticle(id: string): Promise<Blog.Article | null> {
-  const response = await fetch(`https://srv.local/blog/${id}`, {
+  const response = await fetch(import.meta.env.VITE_BACKEND_HOST + `/blog/${id}`, {
     method: 'GET',
   }).then(res => {
     if (!res.ok) {
