@@ -3,3 +3,4 @@ examples/mvc/frontend/dist
 .cache/
 compile_commands.json
 node_modules
+out/
